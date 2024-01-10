@@ -17,6 +17,7 @@ public strictfp class Micro {
     static Team team;
     static boolean hurt;
     static boolean canAttack;
+    static boolean flagTaken;
 
     static Direction[] dirs = {
         Direction.NORTH,
@@ -47,6 +48,7 @@ public strictfp class Micro {
         int enemiesAttacking = 0;
         int enemiesTargeting = 0;
         int alliesTargeting = 0;
+        int minDistToFlag = INF;
 
         public MicroInfo(Direction d) throws GameActionException {
             this.d = d;
@@ -58,6 +60,7 @@ public strictfp class Micro {
             if (!canMove) return;
             int dist = robot.location.distanceSquaredTo(l);
             if (dist < minDistToEnemy) minDistToEnemy = dist;
+            if (robot.hasFlag && dist < minDistToFlag) minDistToFlag = dist;
             if (dist <= attackRadius) {
                 if (robot.hasFlag) inRange = 2;
                 else if (inRange == 0) inRange = 1;
@@ -80,6 +83,11 @@ public strictfp class Micro {
         boolean betterThan(MicroInfo other) {
             if (!canMove) return false;
             if (!other.canMove) return true;
+
+            if (flagTaken && inRange < 2) {
+                if (minDistToFlag < other.minDistToFlag) return true;
+                if (minDistToFlag > other.minDistToFlag) return false;
+            }
 
             if (!hurt && canAttack) {
                 if (inRange > other.inRange) return true;
@@ -111,6 +119,7 @@ public strictfp class Micro {
         curr = rc.getLocation();
         hurt = rc.getHealth() <= hurtHealth;
         canAttack = rc.isActionReady();
+        flagTaken = false;
 
         mi[0] = new MicroInfo(Direction.NORTH);
         mi[1] = new MicroInfo(Direction.NORTHEAST);
@@ -134,6 +143,7 @@ public strictfp class Micro {
                 mi[7].updateAlly(robot);
                 mi[8].updateAlly(robot);
             } else {
+                if (robot.hasFlag) flagTaken = true;
                 mi[0].updateEnemy(robot);
                 mi[1].updateEnemy(robot);
                 mi[2].updateEnemy(robot);
@@ -174,7 +184,7 @@ public strictfp class Micro {
 
         rc.setIndicatorString(s + ":" + best.d);*/
 
-        if (best.d == Direction.CENTER) return false;
+        if (best.d == Direction.CENTER) return true;
         if (rc.canMove(best.d)) {
             rc.move(best.d);
             return true;

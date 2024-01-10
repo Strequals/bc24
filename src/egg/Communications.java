@@ -8,7 +8,8 @@ public strictfp class Communications {
     public static final int ENEMIES_NUM = 8;
     public static final int INF = 1000000;
     public static final int UPDATE_DIST_SQ = 9;
-
+    
+    public static final int FLAGSPAWN_INDEX = 59;
     public static final int EXP_INDEX = 62;
 
     public static int[] array = new int[64];
@@ -147,6 +148,29 @@ public strictfp class Communications {
         }
     }
 
+    public static MapLocation readEnemies() throws GameActionException {
+        int bestIndex = -1;
+        double bestScore = 0;
+        MapLocation bestLoc = null;
+
+        int reportRound;
+        double score;
+        MapLocation l;
+        for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
+            reportRound = array[i] >> 5;
+            l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
+            score = (array[i] % 32) * 16 + (array[i+1] >> 12);
+            score /= (1 + round - reportRound);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+                bestLoc = l;
+            }
+        }
+
+        return bestLoc;
+    }
+
     public static MapLocation readEnemies(MapLocation curr) throws GameActionException {
         int bestIndex = -1;
         double bestScore = 0;
@@ -201,6 +225,38 @@ public strictfp class Communications {
 
     public static int readAverageHealExp() {
         return (array[EXP_INDEX+1] % 512) / 4;
+    }
+    
+    /**
+     * Format of flag spawn data:
+     * x1 (6) | y1 (6)
+     * x2 (6) | y2 (6)
+     * x3 (6) | y3 (6)
+     */
+    public static void updateFlagSpawn(RobotController rc, FlagInfo[] flags) {
+        MapLocation m1;
+        if (array[FLAGSPAWN_INDEX]>0) {
+            m1 = new MapLocation((array[FLAGSPAWN_INDEX]-1) >> 6, (array[FLAGSPAWN_INDEX]-1) % 64);
+        } else {
+            m1 = null;
+        }
+        MapLocation m2;
+        if (array[FLAGSPAWN_INDEX+1]>0) {
+            m2 = new MapLocation((array[FLAGSPAWN_INDEX+1]-1) >> 6, (array[FLAGSPAWN_INDEX+1]-1) % 64);
+        } else {
+            m2 = null;
+        }
+        MapLocation m3;
+        if (array[FLAGSPAWN_INDEX+2]>0) {
+            m3 = new MapLocation((array[FLAGSPAWN_INDEX+2]-1) >> 6, (array[FLAGSPAWN_INDEX+2]-1) % 64);
+        } else {
+            m3 = null;
+        }
+        for (FlagInfo flag : flags) {
+            if (!flag.isPickedUp()) {
+                
+            }
+        }
     }
 
 }

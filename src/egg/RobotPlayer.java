@@ -16,7 +16,7 @@ public strictfp class RobotPlayer {
         Direction.NORTHWEST,
     };
 
-    static final Random rng = new Random(88888888);
+    static final Random rng = new Random();
     static final int READY_ROUNDS = 30;
     static final int ROUNDS_NEW_SEEK = 5;
     static final double SEEK_CHANCE = 0.8;
@@ -67,6 +67,33 @@ public strictfp class RobotPlayer {
 
     public static void trySpawn(RobotController rc) throws GameActionException {
         MapLocation[] spawnLocs = rc.getAllySpawnLocations();
+
+        MapLocation enemyLoc = Communications.readEnemies();
+
+        if (enemyLoc != null) {
+            int minDist = 1000000;
+            MapLocation closest = null;
+
+            int dist;
+            for (MapLocation spawnLoc : spawnLocs) {
+                if (!rc.canSpawn(spawnLoc)) continue;
+                dist = spawnLoc.distanceSquaredTo(enemyLoc);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = spawnLoc;
+                }
+            }
+
+            if (closest != null) {
+                if (rc.canSpawn(closest)) {
+                    rc.spawn(closest);
+                }
+            }
+
+            return;
+        }
+
+
         int l = spawnLocs.length;
         int s = rng.nextInt(l);
         MapLocation spawnLoc;
@@ -85,12 +112,22 @@ public strictfp class RobotPlayer {
         Communications.updateEnemies(rc, nearbyRobots);
         int numAllies = 0;
         int numEnemies = 0;
+        MapLocation curr = rc.getLocation();
 
+        MapLocation nearestEnemy = null;
+        int neDist = 1000000;
+        
+        int eDist;
         for (RobotInfo info : nearbyRobots) {
             if (info.team == team) {
                 numAllies++;
             } else {
                 numEnemies++;
+                eDist = info.location.distanceSquaredTo(curr);
+                if (eDist < neDist) {
+                    neDist = eDist;
+                    nearestEnemy = info.location;
+                }
             }
         }
 
@@ -102,12 +139,20 @@ public strictfp class RobotPlayer {
             if (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 tryAttack(rc);
             }
-            if (micro.doMicro(nearbyRobots) && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
+            boolean isMicro = micro.doMicro(nearbyRobots);
+            if (isMicro && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 nearbyRobots = rc.senseNearbyRobots();
                 Communications.updateEnemies(rc, nearbyRobots);
                 tryAttack(rc);
             }
+            if (!isMicro && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
+                BugNavigation.move(rc, nearestEnemy, true);
+            }
         } else {
+            if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
+                tryDefendFlags(rc);
+            }
+
             boolean collecting = false;
 
             if (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
@@ -346,5 +391,19 @@ public strictfp class RobotPlayer {
         }
         
         return nearestSpawn != null && BugNavigation.move(rc, nearestSpawn, true);
+    }
+
+    public static boolean tryDefendFlags(RobotController rc) throws GameActionException {
+        FlagInfo[] flags = rc.senseNearbyFlags(-1);
+
+        for (FlagInfo flag : flags) {
+            if (flag.getTeam() == team && !rc.senseMapInfo(flag.getLocation()).isSpawnZone()) {
+                return BugNavigation.move(rc, flag.getLocation(), true);
+            } else if (flag.isPickedUp()
+                    && rc.getLocation().distanceSquaredTo(flag.getLocation()) > 2) {
+                return BugNavigation.move(rc, flag.getLocation(), true);
+            }
+        }
+        return false;
     }
 }

@@ -11,7 +11,7 @@ public strictfp class BugNavigation {
     public static int minDist;
 
     public static boolean canMove(RobotController rc, Direction d) {
-        MapLocation loc = rc.getLocation().add(d);
+        MapLocation loc = rc.adjacentLocation(d);
         return rc.canMove(d) || rc.canFill(loc);
     }
 
@@ -20,7 +20,7 @@ public strictfp class BugNavigation {
             rc.move(d);
             return true;
         }
-        MapLocation l = rc.getLocation().add(d);
+        MapLocation l = rc.adjacentLocation(d);
         if (rc.canFill(l)) {
             rc.fill(l);
             return true;

@@ -1,4 +1,4 @@
-package egg;
+package egg0109v1;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -18,7 +18,6 @@ public strictfp class RobotPlayer {
 
     static final Random rng = new Random(88888888);
     static final int READY_ROUNDS = 30;
-    static final int ROUNDS_NEW_SEEK = 5;
     static final double SEEK_CHANCE = 0.8;
 
     static RobotInfo[] nearbyRobots;
@@ -29,9 +28,6 @@ public strictfp class RobotPlayer {
     static Explore explore;
     static Micro micro;
     static boolean setup;
-
-    static int roundSeek = -100;
-    static boolean seekingEnemy;
 
     public static void run(RobotController rc) throws GameActionException {
         team = rc.getTeam();
@@ -50,7 +46,6 @@ public strictfp class RobotPlayer {
                     rc.buyGlobal(GlobalUpgrade.CAPTURING);
                 }
                 if (!rc.isSpawned()) {
-                    BugNavigation.reset();
                     trySpawn(rc);
                 }
                 if (rc.isSpawned()) {
@@ -95,7 +90,7 @@ public strictfp class RobotPlayer {
         }
 
         if (rc.hasFlag()) {
-            if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) tryReturnBase(rc);
+            tryReturnBase(rc);
         }
 
         if (numEnemies > 0 && round >= GameConstants.SETUP_ROUNDS - 4) {
@@ -120,21 +115,13 @@ public strictfp class RobotPlayer {
                     Communications.updateEnemies(rc, nearbyRobots);
                 }
             }
-            
-            if (round - roundSeek > ROUNDS_NEW_SEEK) {
-                seekingEnemy = rng.nextDouble() < SEEK_CHANCE;
-            }
-
-            roundSeek = round;
-
-            if (seekingEnemy) {
-                if (round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS
-                        && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
-                    seekEnemy(rc);
-                    if (rc.getMovementCooldownTurns() >= GameConstants.COOLDOWN_LIMIT) {
-                        nearbyRobots = rc.senseNearbyRobots();
-                        Communications.updateEnemies(rc, nearbyRobots);
-                    }
+            if (round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS
+                    && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT
+                    && rng.nextDouble() < SEEK_CHANCE) {
+                seekEnemy(rc);
+                if (rc.getMovementCooldownTurns() >= GameConstants.COOLDOWN_LIMIT) {
+                    nearbyRobots = rc.senseNearbyRobots();
+                    Communications.updateEnemies(rc, nearbyRobots);
                 }
             }
             if (!collecting && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
@@ -235,8 +222,9 @@ public strictfp class RobotPlayer {
     }
 
     public static boolean seekEnemy(RobotController rc) throws GameActionException {
+
         MapLocation loc = Communications.readEnemies(rc.getLocation());
-        return loc != null && BugNavigation.move(rc, loc, true);
+        return loc != null && BugNavigation.move(rc, loc);
     }
 
     public static boolean explore(RobotController rc) throws GameActionException {
@@ -245,7 +233,7 @@ public strictfp class RobotPlayer {
             return true;
         } else {
             explore.resetExploreTarget(rc, rng);
-            return BugNavigation.move(rc, target, true);
+            return BugNavigation.move(rc, target);
         }
     }
 
@@ -322,7 +310,7 @@ public strictfp class RobotPlayer {
                     return true;
                 }
             } else if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
-                BugNavigation.move(rc, flagLoc, true);
+                BugNavigation.move(rc, flagLoc);
             }
         }
         return false;
@@ -345,6 +333,6 @@ public strictfp class RobotPlayer {
             }
         }
         
-        return nearestSpawn != null && BugNavigation.move(rc, nearestSpawn, true);
+        return nearestSpawn != null && BugNavigation.move(rc, nearestSpawn);
     }
 }

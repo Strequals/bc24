@@ -274,12 +274,12 @@ public strictfp class Communications {
         }
     }
 
-    public static MapLocation tryClaimDefender(RobotController rc) throws GameActionException {
+    public static MapLocation tryClaimDefender(RobotController rc, boolean isSpawned) throws GameActionException {
         for (int i = 3; i-->0;) {
             if (array[FLAGSPAWN_INDEX+i]>0) {
                 if (((array[FLAGSPAWN_INDEX+i]-1) >> 12) == 0) {
                     MapLocation m = new MapLocation(((array[FLAGSPAWN_INDEX+i]-1) >> 6) % 64, (array[FLAGSPAWN_INDEX+i]-1) % 64);
-                    if (m.distanceSquaredTo(rc.getLocation()) <= CLAIM_DEFENDER_RANGE) {
+                    if (!isSpawned || m.distanceSquaredTo(rc.getLocation()) <= CLAIM_DEFENDER_RANGE) {
                         array[FLAGSPAWN_INDEX+i] = array[FLAGSPAWN_INDEX+i] + 4096;
                         rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
                         return m;
@@ -288,5 +288,19 @@ public strictfp class Communications {
             }
         }
         return null;
+    }
+
+    public static void unclaimDefender(RobotController rc, MapLocation defendLoc) throws GameActionException {
+        for (int i = 3; i-->0;) {
+            if (array[FLAGSPAWN_INDEX+i]>0) {
+                int val = array[FLAGSPAWN_INDEX+i]-1;
+                if ((val >> 6) % 64 == defendLoc.x
+                        && val % 64 == defendLoc.y) {
+                    array[FLAGSPAWN_INDEX+i] = (val % 4096) + 1;
+                    rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
+                    return;
+                }
+            }
+        }
     }
 }

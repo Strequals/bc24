@@ -1,4 +1,4 @@
-package egg;
+package egg0110v1;
 
 import battlecode.common.*;
 
@@ -9,7 +9,6 @@ public strictfp class Micro {
     static final int extendedAttackRadius = 18;
     static final int healRadius = 4;
     static final int hurtHealth = 450;
-    static final int DEFEND_RADIUS = 10;
 
     static MicroInfo[] mi;
     static RobotController rc;
@@ -19,7 +18,6 @@ public strictfp class Micro {
     static boolean hurt;
     static boolean canAttack;
     static boolean flagTaken;
-    static MapLocation defendSpot;
 
     static Direction[] dirs = {
         Direction.NORTH,
@@ -51,13 +49,11 @@ public strictfp class Micro {
         int enemiesTargeting = 0;
         int alliesTargeting = 0;
         int minDistToFlag = INF;
-        boolean isDefense = false;
 
         public MicroInfo(Direction d) throws GameActionException {
             this.d = d;
             l = curr.add(d);
             canMove = d == Direction.CENTER || rc.canMove(d);
-            if (defendSpot != null) isDefense = l.isWithinDistanceSquared(defendSpot, DEFEND_RADIUS);
         }
 
         void updateEnemy(RobotInfo robot) {
@@ -93,11 +89,6 @@ public strictfp class Micro {
                 if (minDistToFlag > other.minDistToFlag) return false;
             }
 
-            if (defendSpot != null) {
-                if (isDefense && !other.isDefense) return true;
-                if (!isDefense && other.isDefense) return false;
-            }
-
             if (!hurt && canAttack) {
                 if (inRange > other.inRange) return true;
                 if (inRange < other.inRange) return false;
@@ -125,15 +116,10 @@ public strictfp class Micro {
     }
 
     boolean doMicro(RobotInfo[] nearbyRobots) throws GameActionException {
-        return doMicro(nearbyRobots, null);
-    }
-
-    boolean doMicro(RobotInfo[] nearbyRobots, MapLocation defSpot) throws GameActionException {
         curr = rc.getLocation();
         hurt = rc.getHealth() <= hurtHealth;
         canAttack = rc.isActionReady();
         flagTaken = false;
-        defendSpot = defSpot;
 
         mi[0] = new MicroInfo(Direction.NORTH);
         mi[1] = new MicroInfo(Direction.NORTHEAST);

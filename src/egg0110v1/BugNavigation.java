@@ -1,4 +1,4 @@
-package egg;
+package egg0110v1;
 
 import battlecode.common.*;
 
@@ -72,10 +72,6 @@ public strictfp class BugNavigation {
         
         int dist = loc.distanceSquaredTo(target);
         if (dist < minDist && canMove(rc, dirTarget)) {reset(loc, target);}
-        else if (bugging) {
-            Direction dirObstacle = loc.directionTo(lastObstacle);
-            if (canMove(rc, dirObstacle)) {reset(loc, target);}
-        }
 
         // Try greedy, or else start bugging
         if (!bugging) {
@@ -83,6 +79,7 @@ public strictfp class BugNavigation {
                 return true;
             }
             bugging = true;
+            rc.setIndicatorString("START BUG");
 
             Direction dr = loc.directionTo(target);
             MapLocation obstacleR = loc.add(dr);
@@ -91,8 +88,7 @@ public strictfp class BugNavigation {
                 obstacleR = loc.add(dr);
                 dr = dr.rotateRight();
             }
-            
-            rc.setIndicatorString("START BUG");
+
 
             Direction dl = loc.directionTo(target);
             MapLocation obstacleL = loc.add(dl);
@@ -114,10 +110,9 @@ public strictfp class BugNavigation {
         }
 
         if (rotateRight) {
-            rc.setIndicatorString("R");
-
+            rc.setIndicatorString("R:"+minDist+","+dist);
         } else {
-            rc.setIndicatorString("L");
+            rc.setIndicatorString("L:"+minDist+","+dist);
         }
 
         Direction dir = loc.directionTo(lastObstacle);

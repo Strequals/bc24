@@ -1,4 +1,4 @@
-package egg;
+package egg0110v1;
 
 import battlecode.common.*;
 
@@ -12,13 +12,9 @@ public strictfp class Communications {
     public static final int FLAGSPAWN_INDEX = 59;
     public static final int EXP_INDEX = 62;
 
-
-    public static final int CLAIM_DEFENDER_RANGE = 8;
-
     public static int[] array = new int[64];
     static Team team;
     static int round;
-    static MapLocation[] spawns = new MapLocation[3];
 
     public static void readArray(RobotController rc) throws GameActionException {
         team = rc.getTeam();
@@ -94,25 +90,16 @@ public strictfp class Communications {
      * round reported (11) | score[8:4] (5)
      * score[3:0] (4) | x (6) | y(6)
      */
-    public static void updateEnemies(RobotController rc, RobotInfo[] robots, FlagInfo[] myNearbyFlags) throws GameActionException {
+    public static void updateEnemies(RobotController rc, RobotInfo[] robots) throws GameActionException {
         int totalScore = 0;
         MapLocation target = null;
         int targetScore = 0;
-        
-        for (FlagInfo flag : myNearbyFlags) {
-            if (!flag.isPickedUp()) {
-                totalScore += 60;
-                break;
-            }
-        }
-
-        if (rc.hasFlag()) totalScore += 30;
         
         int score;
         for (RobotInfo robot : robots) {
             if (robot.team != team) {
                 score = 1;
-                if (robot.hasFlag) score += 90;
+                if (robot.hasFlag) score += 77;
             } else {
                 score = 0;
             }
@@ -242,51 +229,34 @@ public strictfp class Communications {
     
     /**
      * Format of flag spawn data:
-     * defended (1) | x1 (6) | y1 (6)
-     * defended (1) | x2 (6) | y2 (6)
-     * defended (1) | x3 (6) | y3 (6)
+     * x1 (6) | y1 (6)
+     * x2 (6) | y2 (6)
+     * x3 (6) | y3 (6)
      */
-    public static void updateFlagSpawn(RobotController rc, FlagInfo[] flags) throws GameActionException {
-        for (int i = 3; i-->0;) {
-            if (array[FLAGSPAWN_INDEX+i]>0) {
-                spawns[i] = new MapLocation(((array[FLAGSPAWN_INDEX+i]-1) >> 6) % 64, (array[FLAGSPAWN_INDEX+i]-1) % 64);
-            } else {
-                spawns[i] = null;
-            }
+    public static void updateFlagSpawn(RobotController rc, FlagInfo[] flags) {
+        MapLocation m1;
+        if (array[FLAGSPAWN_INDEX]>0) {
+            m1 = new MapLocation((array[FLAGSPAWN_INDEX]-1) >> 6, (array[FLAGSPAWN_INDEX]-1) % 64);
+        } else {
+            m1 = null;
+        }
+        MapLocation m2;
+        if (array[FLAGSPAWN_INDEX+1]>0) {
+            m2 = new MapLocation((array[FLAGSPAWN_INDEX+1]-1) >> 6, (array[FLAGSPAWN_INDEX+1]-1) % 64);
+        } else {
+            m2 = null;
+        }
+        MapLocation m3;
+        if (array[FLAGSPAWN_INDEX+2]>0) {
+            m3 = new MapLocation((array[FLAGSPAWN_INDEX+2]-1) >> 6, (array[FLAGSPAWN_INDEX+2]-1) % 64);
+        } else {
+            m3 = null;
         }
         for (FlagInfo flag : flags) {
-            if (flag.getTeam() == team && !flag.isPickedUp()) {
-                int loc = -1000000; // default, array full but also not found???
-                for (int i = 3; i-->0;) {
-                    if (spawns[i] == null) {
-                        loc = i;
-                    } else if (spawns[i].equals(flag.getLocation())) {
-                        loc = -1000000;
-                        break;
-                    }
-                }
-                if (loc >= 0) {
-                    spawns[loc] = flag.getLocation();
-                    array[FLAGSPAWN_INDEX+loc] = (spawns[loc].x << 6) + spawns[loc].y + 1;
-                    rc.writeSharedArray(FLAGSPAWN_INDEX+loc, array[FLAGSPAWN_INDEX+loc]);
-                }
+            if (!flag.isPickedUp()) {
+                
             }
         }
     }
 
-    public static MapLocation tryClaimDefender(RobotController rc) throws GameActionException {
-        for (int i = 3; i-->0;) {
-            if (array[FLAGSPAWN_INDEX+i]>0) {
-                if (((array[FLAGSPAWN_INDEX+i]-1) >> 12) == 0) {
-                    MapLocation m = new MapLocation(((array[FLAGSPAWN_INDEX+i]-1) >> 6) % 64, (array[FLAGSPAWN_INDEX+i]-1) % 64);
-                    if (m.distanceSquaredTo(rc.getLocation()) <= CLAIM_DEFENDER_RANGE) {
-                        array[FLAGSPAWN_INDEX+i] = array[FLAGSPAWN_INDEX+i] + 4096;
-                        rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
-                        return m;
-                    }
-                }
-            }
-        }
-        return null;
-    }
 }

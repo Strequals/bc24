@@ -1,4 +1,4 @@
-package egg;
+package egg0110v2;
 
 import battlecode.common.*;
 
@@ -9,7 +9,6 @@ public strictfp class Communications {
     public static final int INF = 1000000;
     public static final int UPDATE_DIST_SQ = 9;
     
-    public static final int RESPAWN_INDEX = 58;
     public static final int FLAGSPAWN_INDEX = 59;
     public static final int EXP_INDEX = 62;
 
@@ -173,7 +172,8 @@ public strictfp class Communications {
         for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
-            score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) >> (round - reportRound);
+            score = (array[i] % 32) * 16 + (array[i+1] >> 12);
+            score /= (1 + round - reportRound);
             if (score > bestScore) {
                 bestScore = score;
                 bestIndex = i;
@@ -195,8 +195,8 @@ public strictfp class Communications {
         for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
-            score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) >> (round - reportRound);
-            score /= (1 + Math.sqrt(curr.distanceSquaredTo(l)));
+            score = (array[i] % 32) * 16 + (array[i+1] >> 12);
+            score /= (1 + Math.sqrt(curr.distanceSquaredTo(l)) + 2 * (round - reportRound));
             if (score > bestScore) {
                 bestScore = score;
                 bestIndex = i;
@@ -274,12 +274,12 @@ public strictfp class Communications {
         }
     }
 
-    public static MapLocation tryClaimDefender(RobotController rc, boolean isSpawned) throws GameActionException {
+    public static MapLocation tryClaimDefender(RobotController rc) throws GameActionException {
         for (int i = 3; i-->0;) {
             if (array[FLAGSPAWN_INDEX+i]>0) {
                 if (((array[FLAGSPAWN_INDEX+i]-1) >> 12) == 0) {
                     MapLocation m = new MapLocation(((array[FLAGSPAWN_INDEX+i]-1) >> 6) % 64, (array[FLAGSPAWN_INDEX+i]-1) % 64);
-                    if (!isSpawned || m.distanceSquaredTo(rc.getLocation()) <= CLAIM_DEFENDER_RANGE) {
+                    if (m.distanceSquaredTo(rc.getLocation()) <= CLAIM_DEFENDER_RANGE) {
                         array[FLAGSPAWN_INDEX+i] = array[FLAGSPAWN_INDEX+i] + 4096;
                         rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
                         return m;
@@ -288,44 +288,5 @@ public strictfp class Communications {
             }
         }
         return null;
-    }
-
-    public static void unclaimDefender(RobotController rc, MapLocation defendLoc) throws GameActionException {
-        for (int i = 3; i-->0;) {
-            if (array[FLAGSPAWN_INDEX+i]>0) {
-                int val = array[FLAGSPAWN_INDEX+i]-1;
-                if ((val >> 6) % 64 == defendLoc.x
-                        && val % 64 == defendLoc.y) {
-                    array[FLAGSPAWN_INDEX+i] = (val % 4096) + 1;
-                    rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
-                    return;
-                }
-            }
-        }
-    }
-    
-    /**
-     * Format: round (11) | turns (5)
-     */
-    public static void updateRespawn(RobotController rc, int turnsL) throws GameActionException {
-        int round = array[RESPAWN_INDEX] >> 5;
-        int turns = array[RESPAWN_INDEX] % 32;
-        int i = turns - (rc.getRoundNum() - round);
-        if (i <= 0) {
-            array[RESPAWN_INDEX] = (rc.getRoundNum() << 5) + turnsL;
-            rc.writeSharedArray(RESPAWN_INDEX, array[RESPAWN_INDEX]);
-        }
-    }
-
-    public static int getRespawn(RobotController rc) throws GameActionException {
-        int round = array[RESPAWN_INDEX] >> 5;
-        int turns = array[RESPAWN_INDEX] % 32;
-        int i = turns - (rc.getRoundNum() - round);
-        if (i > 0) return i;
-        return 2000;
-    }
-
-    public static void resetRespawn(RobotController rc) throws GameActionException {
-        rc.writeSharedArray(RESPAWN_INDEX, 0);
     }
 }

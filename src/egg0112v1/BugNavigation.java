@@ -1,4 +1,4 @@
-package egg;
+package egg0112v1;
 
 import battlecode.common.*;
 
@@ -42,14 +42,10 @@ public strictfp class BugNavigation {
     }
 
     public static boolean move(RobotController rc, MapLocation target) throws GameActionException {
-        return move(rc, target, false, true);
-    }
-
-    public static boolean move(RobotController rc, MapLocation target, boolean persistence) throws GameActionException {
-        return move(rc, target, persistence, true);
+        return move(rc, target, false);
     }
     
-    public static boolean move(RobotController rc, MapLocation target, boolean persistence, boolean fill) throws GameActionException {
+    public static boolean move(RobotController rc, MapLocation target, boolean persistence) throws GameActionException {
         MapLocation loc = rc.getLocation();
         if (persistence && bugging) {
             if (prevTarget == null) {

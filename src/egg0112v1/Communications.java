@@ -1,4 +1,4 @@
-package egg;
+package egg0112v1;
 
 import battlecode.common.*;
 
@@ -16,7 +16,6 @@ public strictfp class Communications {
     public static final int EXP_INDEX = 62;
     
 
-    public static final int SPAWN_SCORE = 10;
     public static final int HOLDING_FLAG_SCORE = 30;
     public static final int STOLEN_FLAG_SCORE = 90;
     public static final int THREATENED_FLAG_SCORE = 60;
@@ -184,26 +183,25 @@ public strictfp class Communications {
         MapLocation bestLoc = null;
 
         int reportRound;
-        int rawScore;
         double score;
         MapLocation l;
         for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
-            rawScore = (array[i] % 32) * 16 + (array[i+1] >> 12);
-            if (rawScore < HOLDING_FLAG_SCORE) continue;
-            score = rawScore >> (round - reportRound);
+            score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) >> (round - reportRound);
             if (score > bestScore) {
                 bestScore = score;
                 bestIndex = i;
                 bestLoc = l;
             }
         }
-
+        if (bestScore >= HOLDING_FLAG_SCORE) {
+            return bestLoc;
+        }
         return null;
     }
 
-    public static MapLocation readEnemies(RobotController rc, MapLocation curr, boolean useSpawns, Explore explore) throws GameActionException {
+    public static MapLocation readEnemies(MapLocation curr) throws GameActionException {
         int bestIndex = -1;
         double bestScore = 0;
         MapLocation bestLoc = null;
@@ -220,25 +218,6 @@ public strictfp class Communications {
                 bestScore = score;
                 bestIndex = i;
                 bestLoc = l;
-            }
-        }
-
-        if (useSpawns && bestScore < SPAWN_SCORE) {
-            MapLocation[] bfls = rc.senseBroadcastFlagLocations();
-            MapLocation nearest = null;
-            int nearestDist = 1000000;
-            
-            int dist;
-            for (MapLocation bfl : bfls) {
-                dist = curr.distanceSquaredTo(bfl);
-                if (dist < nearestDist) {
-                    nearest = bfl;
-                    nearestDist = dist;
-                }
-            }
-
-            if (nearest != null) {
-                return explore.getLeastRecentlyVisitedWithinRadius(rc, nearest, 10);
             }
         }
         return bestLoc;

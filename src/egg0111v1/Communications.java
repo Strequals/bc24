@@ -1,4 +1,4 @@
-package egg;
+package egg0111v1;
 
 import battlecode.common.*;
 
@@ -9,17 +9,9 @@ public strictfp class Communications {
     public static final int INF = 1000000;
     public static final int UPDATE_DIST_SQ = 9;
     
-    public static final int BUILDERCOUNT_INDEX = 54;
-    public static final int RESPAWNROUND_INDEX = 55;
     public static final int RESPAWN_INDEX = 58;
     public static final int FLAGSPAWN_INDEX = 59;
     public static final int EXP_INDEX = 62;
-    
-
-    public static final int SPAWN_SCORE = 10;
-    public static final int HOLDING_FLAG_SCORE = 30;
-    public static final int STOLEN_FLAG_SCORE = 90;
-    public static final int THREATENED_FLAG_SCORE = 60;
 
 
     public static final int CLAIM_DEFENDER_RANGE = 8;
@@ -110,18 +102,18 @@ public strictfp class Communications {
         
         for (FlagInfo flag : myNearbyFlags) {
             if (!flag.isPickedUp()) {
-                totalScore += THREATENED_FLAG_SCORE;
+                totalScore += 60;
                 break;
             }
         }
 
-        if (rc.hasFlag()) totalScore += HOLDING_FLAG_SCORE;
+        if (rc.hasFlag()) totalScore += 30;
         
         int score;
         for (RobotInfo robot : robots) {
             if (robot.team != team) {
                 score = 1;
-                if (robot.hasFlag) score += STOLEN_FLAG_SCORE;
+                if (robot.hasFlag) score += 90;
             } else {
                 score = 0;
             }
@@ -132,9 +124,11 @@ public strictfp class Communications {
             }
         }
 
+        if (target == null) return;
 
         int lowestScore = INF;
         int lowestIndex = -1;
+
         
         int reportRound;
         MapLocation l;
@@ -143,32 +137,22 @@ public strictfp class Communications {
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
             score = (array[i] % 32) * 16 + (array[i+1] >> 12);
             score = score >> (round - reportRound);
-            rc.setIndicatorDot(l, 255, 0, 0);
-            if (target != null) {
-                if (l.distanceSquaredTo(target) <= UPDATE_DIST_SQ) {
-                    if (totalScore > score) {
-                        array[i] = (totalScore >> 4) + (round << 5);
-                        array[i+1] = target.y + ((target.x + ((totalScore % 16) << 6)) << 6);
-                        rc.writeSharedArray(i, array[i]);
-                        rc.writeSharedArray(i+1, array[i+1]);
-                    }
-                    return;
+
+            if (l.distanceSquaredTo(target) <= UPDATE_DIST_SQ) {
+                if (totalScore > score) {
+                    array[i] = (totalScore >> 4) + (round << 5);
+                    array[i+1] = target.y + ((target.x + ((totalScore % 16) << 6)) << 6);
+                    rc.writeSharedArray(i, array[i]);
+                    rc.writeSharedArray(i+1, array[i+1]);
                 }
-                if (score < lowestScore) {
-                    lowestScore = score;
-                    lowestIndex = i;
-                }
-            } else {
-                if (rc.getLocation().distanceSquaredTo(l) <= UPDATE_DIST_SQ) {
-                    array[i] = 0;
-                    array[i+1] = 0;
-                    rc.writeSharedArray(i, 0);
-                    rc.writeSharedArray(i+1, 0);
-                }
+                return;
+            }
+
+            if (score < lowestScore) {
+                lowestScore = score;
+                lowestIndex = i;
             }
         }
-
-        if (target == null) return;
 
         if (lowestScore < totalScore) {
             array[lowestIndex] = (totalScore >> 4) + (round << 5);
@@ -184,15 +168,12 @@ public strictfp class Communications {
         MapLocation bestLoc = null;
 
         int reportRound;
-        int rawScore;
         double score;
         MapLocation l;
         for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
-            rawScore = (array[i] % 32) * 16 + (array[i+1] >> 12);
-            if (rawScore < HOLDING_FLAG_SCORE) continue;
-            score = rawScore >> (round - reportRound);
+            score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) >> (round - reportRound);
             if (score > bestScore) {
                 bestScore = score;
                 bestIndex = i;
@@ -200,10 +181,10 @@ public strictfp class Communications {
             }
         }
 
-        return null;
+        return bestLoc;
     }
 
-    public static MapLocation readEnemies(RobotController rc, MapLocation curr, boolean useSpawns, Explore explore) throws GameActionException {
+    public static MapLocation readEnemies(MapLocation curr) throws GameActionException {
         int bestIndex = -1;
         double bestScore = 0;
         MapLocation bestLoc = null;
@@ -223,24 +204,6 @@ public strictfp class Communications {
             }
         }
 
-        if (useSpawns && bestScore < SPAWN_SCORE) {
-            MapLocation[] bfls = rc.senseBroadcastFlagLocations();
-            MapLocation nearest = null;
-            int nearestDist = 1000000;
-            
-            int dist;
-            for (MapLocation bfl : bfls) {
-                dist = curr.distanceSquaredTo(bfl);
-                if (dist < nearestDist) {
-                    nearest = bfl;
-                    nearestDist = dist;
-                }
-            }
-
-            if (nearest != null) {
-                return explore.getLeastRecentlyVisitedWithinRadius(rc, nearest, 10);
-            }
-        }
         return bestLoc;
     }
 
@@ -364,32 +327,5 @@ public strictfp class Communications {
 
     public static void resetRespawn(RobotController rc) throws GameActionException {
         rc.writeSharedArray(RESPAWN_INDEX, 0);
-    }
-
-    public static void updateRespawnRound(RobotController rc, int i) throws GameActionException {
-        array[RESPAWNROUND_INDEX+i] = rc.getRoundNum();
-        rc.writeSharedArray(RESPAWNROUND_INDEX+i, array[RESPAWNROUND_INDEX+i]);
-    }
-
-    public static int getRespawnRound(RobotController rc, int i) throws GameActionException {
-        return array[RESPAWNROUND_INDEX+i];
-    }
-
-    public static MapLocation getRespawnLocation(RobotController rc, int i) throws GameActionException {
-        MapLocation m;
-        if (array[RESPAWN_INDEX+i] > 0) {
-            return new MapLocation(((array[FLAGSPAWN_INDEX+i]-1) >> 6) % 64, (array[FLAGSPAWN_INDEX+i]-1) % 64);
-        } else {
-            return null;
-        }
-    }
-
-    public static void claimBuilder(RobotController rc) throws GameActionException {
-        array[BUILDERCOUNT_INDEX]++;
-        rc.writeSharedArray(BUILDERCOUNT_INDEX, array[BUILDERCOUNT_INDEX]);
-    }
-
-    public static int countBuilders() throws GameActionException {
-        return array[BUILDERCOUNT_INDEX];
     }
 }

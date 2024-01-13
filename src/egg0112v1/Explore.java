@@ -1,4 +1,4 @@
-package egg;
+package egg0112v1;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -60,36 +60,5 @@ public strictfp class Explore {
         }
 
         return target;
-    }
-
-    public MapLocation getLeastRecentlyVisitedWithinRadius(RobotController rc, MapLocation center, int radius) throws GameActionException {
-        double bestScore = 1000000;
-        MapLocation best = null;
-
-        double score;
-
-        int rsq = radius*radius;
-        int bestX;
-        int bestY;
-        MapLocation m;
-        int locs = 0;
-        int totalcons = 0;
-        for (int i = -radius; i <= radius; i += 3) {
-            for (int j = -radius; j <= radius; j += 3) {
-                totalcons++;
-                if (i*i+j*j > rsq) continue;
-                m = center.translate(i, j);
-
-                if (!rc.onTheMap(m)) continue;
-                locs++;
-                score = roundSeen[m.x][m.y] - 1.0 / (1 + m.distanceSquaredTo(center));
-                if (score < bestScore) {
-                    bestScore = score;
-                    best = m;
-                }
-            }
-        }
-        rc.setIndicatorString("ruh roh: " + center + "," + locs + "," + totalcons);
-        return best;
     }
 }

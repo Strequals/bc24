@@ -1,4 +1,4 @@
-package egg;
+package egg0112v2;
 
 import battlecode.common.*;
 
@@ -111,7 +111,7 @@ public strictfp class Micro {
             if (enemiesAttacking < other.enemiesAttacking) return true;
             if (enemiesAttacking > other.enemiesAttacking) return false;
 
-            if (inRange == 0 && !hurt && canAttack && isAggro && numAllies >= 2) {
+            if (inRange == 0 && !hurt && canAttack && isAggro && numAllies >= 4 && rc.getRoundNum() % 8 == 0) {
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             }
@@ -119,7 +119,7 @@ public strictfp class Micro {
             if (enemiesTargeting < other.enemiesTargeting) return true;
             if (enemiesTargeting > other.enemiesTargeting) return false;
             
-            if (inRange == 0 && !hurt && canAttack) {
+            if (inRange == 0 && !hurt && canAttack && isAggro) {
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             } else {

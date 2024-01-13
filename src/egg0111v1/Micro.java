@@ -1,4 +1,4 @@
-package egg;
+package egg0111v1;
 
 import battlecode.common.*;
 
@@ -20,11 +20,6 @@ public strictfp class Micro {
     static boolean canAttack;
     static boolean flagTaken;
     static MapLocation defendSpot;
-    static boolean isAggro;
-    static boolean canAttackNext;
-    static boolean canMoveNext;
-    static int numAllies = 0;
-    static int numEnemies = 0;
 
     static Direction[] dirs = {
         Direction.NORTH,
@@ -111,11 +106,6 @@ public strictfp class Micro {
             if (enemiesAttacking < other.enemiesAttacking) return true;
             if (enemiesAttacking > other.enemiesAttacking) return false;
 
-            if (inRange == 0 && !hurt && canAttack && isAggro && numAllies >= 2) {
-                if (minDistToEnemy < other.minDistToEnemy) return true;
-                if (minDistToEnemy > other.minDistToEnemy) return false;
-            }
-
             if (enemiesTargeting < other.enemiesTargeting) return true;
             if (enemiesTargeting > other.enemiesTargeting) return false;
             
@@ -135,19 +125,15 @@ public strictfp class Micro {
     }
 
     boolean doMicro(RobotInfo[] nearbyRobots) throws GameActionException {
-        return doMicro(nearbyRobots, null, true);
+        return doMicro(nearbyRobots, null);
     }
 
-    boolean doMicro(RobotInfo[] nearbyRobots, MapLocation defSpot, boolean aggro) throws GameActionException {
+    boolean doMicro(RobotInfo[] nearbyRobots, MapLocation defSpot) throws GameActionException {
         curr = rc.getLocation();
         hurt = rc.getHealth() <= hurtHealth;
         canAttack = rc.isActionReady();
         flagTaken = false;
         defendSpot = defSpot;
-        isAggro = aggro;
-        canAttackNext = rc.getActionCooldownTurns() - (rc.getRoundNum() >= GameConstants.GLOBAL_UPGRADE_ROUNDS ? GameConstants.COOLDOWNS_PER_TURN + GlobalUpgrade.ACTION.cooldownReductionChange : GameConstants.COOLDOWNS_PER_TURN) < GameConstants.COOLDOWN_LIMIT;
-        numAllies = 0;
-        numEnemies = 0;
 
         mi[0] = new MicroInfo(Direction.NORTH);
         mi[1] = new MicroInfo(Direction.NORTHEAST);
@@ -170,7 +156,6 @@ public strictfp class Micro {
                 mi[6].updateAlly(robot);
                 mi[7].updateAlly(robot);
                 mi[8].updateAlly(robot);
-                numAllies++;
             } else {
                 if (robot.hasFlag) flagTaken = true;
                 mi[0].updateEnemy(robot);
@@ -182,7 +167,6 @@ public strictfp class Micro {
                 mi[6].updateEnemy(robot);
                 mi[7].updateEnemy(robot);
                 mi[8].updateEnemy(robot);
-                numEnemies++;
             }
         }
 

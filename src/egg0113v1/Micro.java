@@ -1,4 +1,4 @@
-package egg;
+package egg0113v1;
 
 import battlecode.common.*;
 
@@ -93,7 +93,7 @@ public strictfp class Micro {
             if (!canMove) return false;
             if (!other.canMove) return true;
 
-            if (flagTaken) {
+            if (flagTaken && inRange < 2) {
                 if (minDistToFlag < other.minDistToFlag) return true;
                 if (minDistToFlag > other.minDistToFlag) return false;
             }
@@ -103,7 +103,7 @@ public strictfp class Micro {
                 if (!isDefense && other.isDefense) return false;
             }
 
-            if (canAttack && !hurt) {
+            if (!hurt && canAttack) {
                 if (inRange > other.inRange) return true;
                 if (inRange < other.inRange) return false;
             }
@@ -111,7 +111,7 @@ public strictfp class Micro {
             if (enemiesAttacking < other.enemiesAttacking) return true;
             if (enemiesAttacking > other.enemiesAttacking) return false;
 
-            if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
+            if (inRange == 0 && !hurt && canAttack && isAggro && numAllies >= 2) {
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             }
@@ -119,11 +119,9 @@ public strictfp class Micro {
             if (enemiesTargeting < other.enemiesTargeting) return true;
             if (enemiesTargeting > other.enemiesTargeting) return false;
             
-            if (!hurt && inRange == 0) {
-                if (canAttackNext) {
-                    if (minDistToEnemy < other.minDistToEnemy) return true;
-                    if (minDistToEnemy > other.minDistToEnemy) return false;
-                }
+            if (inRange == 0 && !hurt && canAttack) {
+                if (minDistToEnemy < other.minDistToEnemy) return true;
+                if (minDistToEnemy > other.minDistToEnemy) return false;
             } else {
                 if (minDistToEnemy > other.minDistToEnemy) return true;
                 if (minDistToEnemy < other.minDistToEnemy) return false;

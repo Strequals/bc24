@@ -1,4 +1,4 @@
-package egg;
+package egg0113v2;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -16,21 +16,13 @@ public strictfp class RobotPlayer {
         Direction.NORTHWEST,
     };
 
-    static final Direction[] diagonals = {
-        Direction.NORTHEAST,
-        Direction.SOUTHEAST,
-        Direction.SOUTHWEST,
-        Direction.NORTHWEST,
-    };
-
-    //static final Direction[] 
-
     static final Random rng = new Random();
     static final int READY_ROUNDS = 30;
     static final int ROUNDS_NEW_SEEK = 5;
     static final double SEEK_CHANCE = 1;
     static final int TURNS_SWITCH_DEFENDER = 100;
     static final int ROUNDS_DONT_CLAIM = 30; // after leaving defense dont go back for this many rounds
+    static final int BECOME_BUILDER_DELAY = 50; // after becoming builder dont allow others to become builders for this many rounds
     static final int NUM_BUILDERS = 3;
 
     static RobotInfo[] nearbyRobots;
@@ -321,7 +313,7 @@ public strictfp class RobotPlayer {
                         && !rc.getLocation().equals(defendSpot)) {
                     BugNavigation.move(rc, defendSpot, false);
                 }
-                //tryBuildDefenses(rc);
+                tryBuildDefenses(rc);
             } else {
                 if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                     collecting = tryCollectCrumbs(rc, true);
@@ -329,10 +321,6 @@ public strictfp class RobotPlayer {
                         nearbyRobots = rc.senseNearbyRobots();
                         Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
                     }
-                }
-
-                if (isBuilder) {
-                    tryBuildBuilderDefense(rc, nearbyFlags);
                 }
                 
                 if (round - roundSeek > ROUNDS_NEW_SEEK) {
@@ -378,6 +366,7 @@ public strictfp class RobotPlayer {
 
         if (isBuilder) {
             tryDigAndBuild(rc);
+            tryBuildBuilderDefense(rc, nearbyFlags);
         }
 
         if (!isThreatened && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
@@ -692,37 +681,21 @@ public strictfp class RobotPlayer {
     }
 
     public static void tryBuildBuilderDefense(RobotController rc, FlagInfo[] nearbyFlags) throws GameActionException {
-        if (rc.getExperience(SkillType.BUILD) < SkillType.BUILD.getExperience(6)
-                || rc.getCrumbs() < TrapType.STUN.buildCost) return;
         MapLocation curr = rc.getLocation();
-        
-        int closestDist = 1000000;
-        MapLocation closest = null;
-
-        MapLocation m;
-        MapInfo mi;
-        int dist;
-        for (FlagInfo nearbyFlag : nearbyFlags) {
-            if (!nearbyFlag.getLocation().isWithinDistanceSquared(curr, 18)) continue;
-            for (Direction d : diagonals) {
-                m = nearbyFlag.getLocation().add(d);
-                if (!rc.canSenseLocation(m)) continue;
-                if (rc.canBuild(TrapType.STUN, m)) {
-                    rc.build(TrapType.STUN, m);
-                    continue;
-                }
-
-                mi = rc.senseMapInfo(m);
-                if (mi.getTrapType() == TrapType.NONE) {
-                    dist = m.distanceSquaredTo(curr);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closest = m;
+        if (rc.getExperience(SkillType.BUILD) >= SkillType.BUILD.getExperience(6)) {
+            MapLocation m;
+            for (FlagInfo nearbyFlag : nearbyFlags) {
+                if (!nearbyFlag.getLocation().isWithinDistanceSquared(curr, 18)) continue;
+                for (Direction d : directions) {
+                    m = curr.add(d);
+                    if (m.isWithinDistanceSquared(nearbyFlag.getLocation(), 2)) {
+                        if (rc.canBuild(TrapType.EXPLOSIVE, m)) {
+                            rc.build(TrapType.EXPLOSIVE, m);
+                            return;
+                        }
                     }
                 }
             }
         }
-
-        if (closest != null) BugNavigation.move(rc, closest, false, true);
     }
 }

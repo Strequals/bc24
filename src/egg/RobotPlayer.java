@@ -32,6 +32,7 @@ public strictfp class RobotPlayer {
     static final int TURNS_SWITCH_DEFENDER = 100;
     static final int ROUNDS_DONT_CLAIM = 30; // after leaving defense dont go back for this many rounds
     static final int NUM_BUILDERS = 3;
+    static final int DIG_ROUND = 1950;
 
     static RobotInfo[] nearbyRobots;
     static MapLocation[] nearbyCrumbs;
@@ -262,9 +263,12 @@ public strictfp class RobotPlayer {
             if (numEnemies > 0) turnsQuietlyDefended = 0;
 
             if (turnsQuietlyDefended > TURNS_SWITCH_DEFENDER && Communications.getRespawn(rc) <= 2) {
-                Communications.unclaimDefender(rc, defendSpot);
+                if (nearbyFlags.length > 0) {
+                    // if no flags nearby and no enemies have been seen for 100 rounds, it's probably captured.
+                    Communications.unclaimDefender(rc, defendSpot);
+                    Communications.resetRespawn(rc);
+                }
                 defendSpot = null;
-                Communications.resetRespawn(rc);
             }
         }
 
@@ -384,6 +388,10 @@ public strictfp class RobotPlayer {
             tryHeal(rc);
         }
 
+        if (round > DIG_ROUND && !isThreatened && rc.isActionReady()) {
+            tryDig(rc);
+        }
+
     }
     
     public static MapLocation getEnemyTarget(MapLocation loc) {
@@ -457,7 +465,7 @@ public strictfp class RobotPlayer {
         }
 
         if (best != null) {
-            BugNavigation.move(rc, best, false, fill);
+            BugNavigation.move(rc, best, true, fill);
             return true;
         }
         return false;
@@ -723,6 +731,18 @@ public strictfp class RobotPlayer {
             }
         }
 
-        if (closest != null) BugNavigation.move(rc, closest, false, true);
+        if (closest != null) BugNavigation.move(rc, closest, true, true);
+    }
+
+    public static void tryDig(RobotController rc) throws GameActionException {
+        MapLocation m;
+        MapLocation curr = rc.getLocation();
+        for (Direction d : directions) {
+            m = curr.add(d);
+            if ((m.x + m.y) % 2 == 0 && rc.canDig(m)) {
+                rc.dig(m);
+                return;
+            }
+        }
     }
 }

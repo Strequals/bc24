@@ -52,7 +52,7 @@ public strictfp class BugNavigation {
     public static boolean move(RobotController rc, MapLocation target, boolean persistence, boolean fill) throws GameActionException {
         MapLocation loc = rc.getLocation();
         if (persistence && bugging) {
-            if (prevTarget == null) {
+            /*if (prevTarget == null) {
                 prevTarget = target;
                 reset(loc, target);
             } else {
@@ -64,6 +64,15 @@ public strictfp class BugNavigation {
                     prevTarget = target;
                     reset(loc, target);
                 }
+            }*/
+
+            double dot = (prevTarget.x - loc.x) * (target.x - loc.x) + (prevTarget.y - loc.y) * (target.y - loc.y);
+            double cos2 = dot * dot / prevTarget.distanceSquaredTo(loc) / target.distanceSquaredTo(loc);
+            if (prevTarget == null || target.distanceSquaredTo(loc) < minDist || cos2 < 0.5) {
+                prevTarget = target;
+                reset(loc, target);
+            } else {
+                target = prevTarget;
             }
         } else {
             if (prevTarget == null || !target.equals(prevTarget)) {
@@ -75,7 +84,10 @@ public strictfp class BugNavigation {
         Direction dirTarget = loc.directionTo(target);
         
         int dist = loc.distanceSquaredTo(target);
-        if (dist < minDist && canMove(rc, dirTarget)) {reset(loc, target);}
+        if (dist < minDist) {
+            if (canMove(rc, dirTarget)) reset(loc, target);
+            minDist = dist;
+        }
         else if (bugging) {
             Direction dirObstacle = loc.directionTo(lastObstacle);
             if (canMove(rc, dirObstacle)) {reset(loc, target);}

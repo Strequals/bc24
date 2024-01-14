@@ -25,6 +25,7 @@ public strictfp class Micro {
     static boolean canMoveNext;
     static int numAllies = 0;
     static int numEnemies = 0;
+    //static int adjacentAllies = 0;
 
     static Direction[] dirs = {
         Direction.NORTH,
@@ -150,6 +151,7 @@ public strictfp class Micro {
         canAttackNext = rc.getActionCooldownTurns() - (rc.getRoundNum() >= GameConstants.GLOBAL_UPGRADE_ROUNDS ? GameConstants.COOLDOWNS_PER_TURN + GlobalUpgrade.ACTION.cooldownReductionChange : GameConstants.COOLDOWNS_PER_TURN) < GameConstants.COOLDOWN_LIMIT;
         numAllies = 0;
         numEnemies = 0;
+        //adjacentAllies = 0;
 
         mi[0] = new MicroInfo(Direction.NORTH);
         mi[1] = new MicroInfo(Direction.NORTHEAST);
@@ -175,6 +177,7 @@ public strictfp class Micro {
                 numAllies++;
             } else {
                 if (robot.hasFlag) flagTaken = true;
+                //if (robot.location.isWithinDistanceSquared(curr, 2)) adjacentAllies++;
                 mi[0].updateEnemy(robot);
                 mi[1].updateEnemy(robot);
                 mi[2].updateEnemy(robot);

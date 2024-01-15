@@ -17,7 +17,7 @@ public strictfp class Communications {
     
 
     public static final int SPAWN_SCORE = 10;
-    public static final int HOLDING_FLAG_SCORE = 30;
+    public static final int HOLDING_FLAG_SCORE = 10;
     public static final int STOLEN_FLAG_SCORE = 90;
     public static final int THREATENED_FLAG_SCORE = 60;
 
@@ -115,7 +115,10 @@ public strictfp class Communications {
             }
         }
 
-        if (rc.hasFlag()) totalScore += HOLDING_FLAG_SCORE;
+        if (rc.hasFlag()) {
+            totalScore += HOLDING_FLAG_SCORE;
+            target = rc.getLocation();
+        }
         
         int score;
         for (RobotInfo robot : robots) {
@@ -191,7 +194,7 @@ public strictfp class Communications {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
             rawScore = (array[i] % 32) * 16 + (array[i+1] >> 12);
-            if (rawScore < HOLDING_FLAG_SCORE) continue;
+            if (rawScore < THREATENED_FLAG_SCORE) continue;
             score = rawScore >> (round - reportRound);
             if (score > bestScore) {
                 bestScore = score;

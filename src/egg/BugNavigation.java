@@ -4,11 +4,43 @@ import battlecode.common.*;
 
 public strictfp class BugNavigation {
 
+    static class MapLocationMultiSet {
+        String data;
+        
+        MapLocationMultiSet() {
+            data = new String();
+        }
+
+        void add(MapLocation loc) {
+            data += loc.toString();
+        }
+
+        int count(MapLocation loc) {
+            int i = 0;
+            String loc_s = loc.toString();
+            int c = 0;
+            while ((i = data.indexOf(loc_s, i) + 1) > 0) {
+                c++;
+            }
+            return c;
+        }
+
+        boolean contains(MapLocation loc) {
+            return data.contains(loc.toString());
+        }
+
+        void clear() {
+            data = new String();
+        }
+    }
+
     public static boolean bugging = false;
     public static boolean rotateRight = false;
     public static MapLocation lastObstacle = null;
     public static MapLocation prevTarget = null;
     public static int minDist;
+    public static MapLocationMultiSet visited = new MapLocationMultiSet();
+    public static MapLocationMultiSet banned = new MapLocationMultiSet();
 
     public static boolean canMove(RobotController rc, Direction d) {
         MapLocation loc = rc.adjacentLocation(d);
@@ -27,18 +59,28 @@ public strictfp class BugNavigation {
         }
         return false;
     }
-
+    
+    /**
+     * Completely reset the bugnav, use when respawning.
+     */
     public static void reset() {
         prevTarget = null;
         lastObstacle = null;
         minDist = 1000000;
         bugging = false;
+        visited.clear();
+        banned.clear();
     }
 
+    public static void clearBanned() {
+        banned.clear();
+    }
+    
     public static void reset(MapLocation loc, MapLocation target) {
         lastObstacle = null;
         minDist = loc.distanceSquaredTo(target);
         bugging = false;
+        visited.clear();
     }
 
     public static boolean move(RobotController rc, MapLocation target) throws GameActionException {
@@ -91,6 +133,19 @@ public strictfp class BugNavigation {
         else if (bugging) {
             Direction dirObstacle = loc.directionTo(lastObstacle);
             if (canMove(rc, dirObstacle)) {reset(loc, target);}
+        }
+
+
+        if (visited.count(loc) >= 2) {
+            MapLocation l;
+            for (Direction d : RobotPlayer.allDirections) {
+                l = target.add(d);
+                if (!banned.contains(l)) {
+                    banned.add(l);
+                }
+            }
+        } else {
+            visited.add(loc);
         }
 
         // Try greedy, or else start bugging
@@ -147,6 +202,10 @@ public strictfp class BugNavigation {
             else dir = dir.rotateLeft();
         }
         return tryMove(rc, dir);
+    }
+
+    public static boolean isBanned(MapLocation loc) {
+        return banned.contains(loc);
     }
 
     public static boolean greedy(RobotController rc, MapLocation target) throws GameActionException {

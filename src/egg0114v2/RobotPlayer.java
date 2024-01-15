@@ -1,4 +1,4 @@
-package egg;
+package egg0114v2;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -33,7 +33,6 @@ public strictfp class RobotPlayer {
     static final int ROUNDS_DONT_CLAIM = 30; // after leaving defense dont go back for this many rounds
     static final int NUM_BUILDERS = 3;
     static final int DIG_ROUND = 1950;
-    static final int ROUNDS_MICRO_START_PATHING = 10;
 
     static RobotInfo[] nearbyRobots;
     static MapLocation[] nearbyCrumbs;
@@ -57,7 +56,6 @@ public strictfp class RobotPlayer {
     static boolean isBuilder = false;
     static int numAllies;
     static int numEnemies;
-    static int roundsMicroNoAction = 0;
 
     public static void run(RobotController rc) throws GameActionException {
         team = rc.getTeam();
@@ -303,12 +301,8 @@ public strictfp class RobotPlayer {
                     }
                 }
             }
-
-            if (roundsMicroNoAction > ROUNDS_MICRO_START_PATHING && rc.canSenseLocation(nearestEnemy) && !hasLineOfSight(rc, curr, nearestEnemy) && rc.isMovementReady()) {
-                BugNavigation.move(rc, nearestEnemy, true);
-            }
             boolean aggro = nearbyCrumbs.length > 0;
-            boolean isMicro = rc.isMovementReady() && micro.doMicro(nearbyRobots, defendSpot, aggro);
+            boolean isMicro = micro.doMicro(nearbyRobots, defendSpot, aggro);
             if (isMicro && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 nearbyRobots = rc.senseNearbyRobots();
                 Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
@@ -316,12 +310,6 @@ public strictfp class RobotPlayer {
             }
             if (!isMicro && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 BugNavigation.move(rc, nearestEnemy, true);
-            }
-
-            if (rc.isActionReady()) {
-                roundsMicroNoAction++;
-            } else {
-                roundsMicroNoAction = 0;
             }
         } else {
 
@@ -532,6 +520,7 @@ public strictfp class RobotPlayer {
 
         if (bestIndex >= 0) {
             rc.move(directions[bestIndex]);
+            System.out.println("MOVE HEAL");
             return true;
         }
         return false;

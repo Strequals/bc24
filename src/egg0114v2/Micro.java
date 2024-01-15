@@ -1,4 +1,4 @@
-package egg;
+package egg0114v2;
 
 import battlecode.common.*;
 
@@ -138,9 +138,6 @@ public strictfp class Micro {
 
             if (alliesTargeting > other.alliesTargeting) return true;
             if (alliesTargeting < other.alliesTargeting) return false;
-
-            if (!diagonal && other.diagonal) return true;
-            if (diagonal && !other.diagonal) return false;
 
             return minDistToAlly < other.minDistToAlly;
         }

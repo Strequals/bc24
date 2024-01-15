@@ -1,4 +1,4 @@
-package egg;
+package egg0115v1;
 
 import battlecode.common.*;
 

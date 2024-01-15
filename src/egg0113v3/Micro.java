@@ -1,4 +1,4 @@
-package egg;
+package egg0113v3;
 
 import battlecode.common.*;
 
@@ -25,7 +25,6 @@ public strictfp class Micro {
     static boolean canMoveNext;
     static int numAllies = 0;
     static int numEnemies = 0;
-    //static int adjacentAllies = 0;
 
     static Direction[] dirs = {
         Direction.NORTH,
@@ -58,11 +57,9 @@ public strictfp class Micro {
         int alliesTargeting = 0;
         int minDistToFlag = INF;
         boolean isDefense = false;
-        boolean diagonal = false;
 
         public MicroInfo(Direction d) throws GameActionException {
             this.d = d;
-            if (d == Direction.NORTHEAST || d == Direction.SOUTHEAST || d == Direction.SOUTHWEST || d == Direction.NORTHWEST) diagonal = true;
             l = curr.add(d);
             canMove = d == Direction.CENTER || rc.canMove(d);
             if (defendSpot != null) isDefense = l.isWithinDistanceSquared(defendSpot, DEFEND_RADIUS);
@@ -115,8 +112,6 @@ public strictfp class Micro {
             if (enemiesAttacking > other.enemiesAttacking) return false;
 
             if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
-                if (!diagonal && other.diagonal) return true;
-                if (diagonal && !other.diagonal) return false;
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             }
@@ -126,8 +121,6 @@ public strictfp class Micro {
             
             if (!hurt && inRange == 0) {
                 if (canAttackNext) {
-                    if (!diagonal && other.diagonal) return true;
-                    if (diagonal && !other.diagonal) return false;
                     if (minDistToEnemy < other.minDistToEnemy) return true;
                     if (minDistToEnemy > other.minDistToEnemy) return false;
                 }
@@ -157,7 +150,6 @@ public strictfp class Micro {
         canAttackNext = rc.getActionCooldownTurns() - (rc.getRoundNum() >= GameConstants.GLOBAL_UPGRADE_ROUNDS ? GameConstants.COOLDOWNS_PER_TURN + GlobalUpgrade.ACTION.cooldownReductionChange : GameConstants.COOLDOWNS_PER_TURN) < GameConstants.COOLDOWN_LIMIT;
         numAllies = 0;
         numEnemies = 0;
-        //adjacentAllies = 0;
 
         mi[0] = new MicroInfo(Direction.NORTH);
         mi[1] = new MicroInfo(Direction.NORTHEAST);
@@ -183,7 +175,6 @@ public strictfp class Micro {
                 numAllies++;
             } else {
                 if (robot.hasFlag) flagTaken = true;
-                //if (robot.location.isWithinDistanceSquared(curr, 2)) adjacentAllies++;
                 mi[0].updateEnemy(robot);
                 mi[1].updateEnemy(robot);
                 mi[2].updateEnemy(robot);

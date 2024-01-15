@@ -1,4 +1,4 @@
-package egg;
+package egg0114v1;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -271,13 +271,9 @@ public strictfp class RobotPlayer {
                 defendSpot = null;
             }
         }
-        
-        boolean retbase = false;
+
         if (rc.hasFlag() || (rc.isActionReady() && rc.isMovementReady() && numAllies > numEnemies && tryTakeFlag(rc))) {
-            if (rc.isMovementReady()) {
-                tryReturnBase(rc);
-                retbase = true;
-            }
+            if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) tryReturnBase(rc);
         }
 
         if (numEnemies > 0 && round >= GameConstants.SETUP_ROUNDS - 4) {
@@ -321,9 +317,7 @@ public strictfp class RobotPlayer {
             boolean collecting = false;
 
             if (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
-                if (!tryHeal(rc) && rc.isMovementReady() && tryMoveHeal(rc)) {
-                    tryHeal(rc);
-                }
+                tryHeal(rc);
             }
 
             if (defendSpot != null) {
@@ -450,77 +444,6 @@ public strictfp class RobotPlayer {
         MapLocation best = getAllyTarget(rc, rc.getLocation());
         if (best != null && rc.canHeal(best)) {
             rc.heal(best);
-            return true;
-        }
-        return false;
-    }
-
-    public static boolean tryMoveHeal(RobotController rc) throws GameActionException {
-        /*MapLocation best = null;
-        MapLocation curr = rc.getLocation();
-        double bestScore = 1000000;
-        double score;
-        for (RobotInfo info : nearbyRobots) {
-            if (info.team == team && info.health < GameConstants.DEFAULT_HEALTH - 80) {
-                score = info.location.distanceSquaredTo(curr) + ((double) info.health) / GameConstants.DEFAULT_HEALTH;
-                if (score < bestScore) {
-                    bestScore = score;
-                    best = info.location;
-                }
-            }
-        }
-
-        if (best != null && bestScore > GameConstants.HEAL_RADIUS_SQUARED) {
-            MapLocation m;
-            for (Direction d : directions) {
-                m = curr.add(d);
-                if (rc.canMove(d) && m.isWithinDistanceSquared(best, GameConstants.HEAL_RADIUS_SQUARED)) {
-                    rc.move(d);
-                    return true;
-                }
-            }
-        }
-        return false;*/
-
-        MapLocation curr = rc.getLocation();
-        MapLocation[] m = new MapLocation[8];
-        double[] scores = new double[8];
-        for (int i = 8; i-->0;) {
-            m[i] = curr.add(directions[i]);
-            scores[i] = 1000000;
-        }
-        double score;
-        int dist;
-        for (RobotInfo info : nearbyRobots) {
-            if (info.team == team && info.health < GameConstants.DEFAULT_HEALTH - 80) {
-                for (int i = 8; i-->0;) {
-                    dist = m[i].distanceSquaredTo(info.location);
-                    if (dist <= GameConstants.HEAL_RADIUS_SQUARED) {
-                        //score = info.health + ((double) dist / 100);
-                        score = info.health;
-                        if (info.hasFlag) score -= 1000;
-                        if (score < scores[i]) scores[i] = score;
-                    }
-                }
-            }
-        }
-
-        for (int i = 0; i < 8; i += 2) {
-            scores[i] += 0.5;
-        }
-
-        int bestIndex = -1;
-        double bestScore = 1000000;
-        for (int i = 8; i-->0;) {
-            if (rc.canMove(directions[i]) && scores[i] < bestScore) {
-                bestScore = scores[i];
-                bestIndex = i;
-            }
-        }
-
-        if (bestIndex >= 0) {
-            rc.move(directions[bestIndex]);
-            System.out.println("MOVE HEAL");
             return true;
         }
         return false;

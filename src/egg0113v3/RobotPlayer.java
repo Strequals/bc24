@@ -1,4 +1,4 @@
-package egg;
+package egg0113v3;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -32,7 +32,6 @@ public strictfp class RobotPlayer {
     static final int TURNS_SWITCH_DEFENDER = 100;
     static final int ROUNDS_DONT_CLAIM = 30; // after leaving defense dont go back for this many rounds
     static final int NUM_BUILDERS = 3;
-    static final int DIG_ROUND = 1950;
 
     static RobotInfo[] nearbyRobots;
     static MapLocation[] nearbyCrumbs;
@@ -263,21 +262,14 @@ public strictfp class RobotPlayer {
             if (numEnemies > 0) turnsQuietlyDefended = 0;
 
             if (turnsQuietlyDefended > TURNS_SWITCH_DEFENDER && Communications.getRespawn(rc) <= 2) {
-                if (nearbyFlags.length > 0) {
-                    // if no flags nearby and no enemies have been seen for 100 rounds, it's probably captured.
-                    Communications.unclaimDefender(rc, defendSpot);
-                    Communications.resetRespawn(rc);
-                }
+                Communications.unclaimDefender(rc, defendSpot);
                 defendSpot = null;
+                Communications.resetRespawn(rc);
             }
         }
-        
-        boolean retbase = false;
+
         if (rc.hasFlag() || (rc.isActionReady() && rc.isMovementReady() && numAllies > numEnemies && tryTakeFlag(rc))) {
-            if (rc.isMovementReady()) {
-                tryReturnBase(rc);
-                retbase = true;
-            }
+            if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) tryReturnBase(rc);
         }
 
         if (numEnemies > 0 && round >= GameConstants.SETUP_ROUNDS - 4) {
@@ -321,9 +313,7 @@ public strictfp class RobotPlayer {
             boolean collecting = false;
 
             if (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
-                if (!tryHeal(rc) && rc.isMovementReady() && tryMoveHeal(rc)) {
-                    tryHeal(rc);
-                }
+                tryHeal(rc);
             }
 
             if (defendSpot != null) {
@@ -394,10 +384,6 @@ public strictfp class RobotPlayer {
             tryHeal(rc);
         }
 
-        if (round > DIG_ROUND && !isThreatened && rc.isActionReady()) {
-            tryDig(rc);
-        }
-
     }
     
     public static MapLocation getEnemyTarget(MapLocation loc) {
@@ -455,77 +441,6 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-    public static boolean tryMoveHeal(RobotController rc) throws GameActionException {
-        /*MapLocation best = null;
-        MapLocation curr = rc.getLocation();
-        double bestScore = 1000000;
-        double score;
-        for (RobotInfo info : nearbyRobots) {
-            if (info.team == team && info.health < GameConstants.DEFAULT_HEALTH - 80) {
-                score = info.location.distanceSquaredTo(curr) + ((double) info.health) / GameConstants.DEFAULT_HEALTH;
-                if (score < bestScore) {
-                    bestScore = score;
-                    best = info.location;
-                }
-            }
-        }
-
-        if (best != null && bestScore > GameConstants.HEAL_RADIUS_SQUARED) {
-            MapLocation m;
-            for (Direction d : directions) {
-                m = curr.add(d);
-                if (rc.canMove(d) && m.isWithinDistanceSquared(best, GameConstants.HEAL_RADIUS_SQUARED)) {
-                    rc.move(d);
-                    return true;
-                }
-            }
-        }
-        return false;*/
-
-        MapLocation curr = rc.getLocation();
-        MapLocation[] m = new MapLocation[8];
-        double[] scores = new double[8];
-        for (int i = 8; i-->0;) {
-            m[i] = curr.add(directions[i]);
-            scores[i] = 1000000;
-        }
-        double score;
-        int dist;
-        for (RobotInfo info : nearbyRobots) {
-            if (info.team == team && info.health < GameConstants.DEFAULT_HEALTH - 80) {
-                for (int i = 8; i-->0;) {
-                    dist = m[i].distanceSquaredTo(info.location);
-                    if (dist <= GameConstants.HEAL_RADIUS_SQUARED) {
-                        //score = info.health + ((double) dist / 100);
-                        score = info.health;
-                        if (info.hasFlag) score -= 1000;
-                        if (score < scores[i]) scores[i] = score;
-                    }
-                }
-            }
-        }
-
-        for (int i = 0; i < 8; i += 2) {
-            scores[i] += 0.5;
-        }
-
-        int bestIndex = -1;
-        double bestScore = 1000000;
-        for (int i = 8; i-->0;) {
-            if (rc.canMove(directions[i]) && scores[i] < bestScore) {
-                bestScore = scores[i];
-                bestIndex = i;
-            }
-        }
-
-        if (bestIndex >= 0) {
-            rc.move(directions[bestIndex]);
-            System.out.println("MOVE HEAL");
-            return true;
-        }
-        return false;
-    }
-
     public static boolean tryCollectCrumbs(RobotController rc, boolean fill) throws GameActionException {
         MapLocation loc = rc.getLocation();
         
@@ -542,7 +457,7 @@ public strictfp class RobotPlayer {
         }
 
         if (best != null) {
-            BugNavigation.move(rc, best, true, fill);
+            BugNavigation.move(rc, best, false, fill);
             return true;
         }
         return false;
@@ -808,18 +723,6 @@ public strictfp class RobotPlayer {
             }
         }
 
-        if (closest != null) BugNavigation.move(rc, closest, true, true);
-    }
-
-    public static void tryDig(RobotController rc) throws GameActionException {
-        MapLocation m;
-        MapLocation curr = rc.getLocation();
-        for (Direction d : directions) {
-            m = curr.add(d);
-            if ((m.x + m.y) % 2 == 0 && rc.canDig(m)) {
-                rc.dig(m);
-                return;
-            }
-        }
+        if (closest != null) BugNavigation.move(rc, closest, false, true);
     }
 }

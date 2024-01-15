@@ -1,4 +1,4 @@
-package egg;
+package egg0114v1;
 
 import battlecode.common.*;
 
@@ -58,11 +58,9 @@ public strictfp class Micro {
         int alliesTargeting = 0;
         int minDistToFlag = INF;
         boolean isDefense = false;
-        boolean diagonal = false;
 
         public MicroInfo(Direction d) throws GameActionException {
             this.d = d;
-            if (d == Direction.NORTHEAST || d == Direction.SOUTHEAST || d == Direction.SOUTHWEST || d == Direction.NORTHWEST) diagonal = true;
             l = curr.add(d);
             canMove = d == Direction.CENTER || rc.canMove(d);
             if (defendSpot != null) isDefense = l.isWithinDistanceSquared(defendSpot, DEFEND_RADIUS);
@@ -115,8 +113,6 @@ public strictfp class Micro {
             if (enemiesAttacking > other.enemiesAttacking) return false;
 
             if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
-                if (!diagonal && other.diagonal) return true;
-                if (diagonal && !other.diagonal) return false;
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             }
@@ -126,8 +122,6 @@ public strictfp class Micro {
             
             if (!hurt && inRange == 0) {
                 if (canAttackNext) {
-                    if (!diagonal && other.diagonal) return true;
-                    if (diagonal && !other.diagonal) return false;
                     if (minDistToEnemy < other.minDistToEnemy) return true;
                     if (minDistToEnemy > other.minDistToEnemy) return false;
                 }

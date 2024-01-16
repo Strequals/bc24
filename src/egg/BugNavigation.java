@@ -44,8 +44,21 @@ public strictfp class BugNavigation {
 
     public static boolean canMove(RobotController rc, Direction d) {
         MapLocation loc = rc.adjacentLocation(d);
-        return rc.canMove(d) || rc.canFill(loc);
+        return rc.canMove(d) || (/*(loc.x + loc.y) % 2 == 1 && */rc.canFill(loc));
     }
+
+    /*public static boolean canFill(RobotController rc, MapLocation l) throws GameActionException {
+        if (!rc.canFill(l)) return false;
+        if ((l.x + l.y) % 2 == 1) return true;
+        MapInfo mN = rc.senseLocation(l.add(Direction.NORTH));
+        MapInfo mE = rc.senseLocation(l.add(Direction.EAST));
+        MapInfo mS = rc.senseLocation(l.add(Direction.SOUTH));
+        MapInfo mW = rc.senseLocation(l.add(Direction.WEST));
+        return mN.isWall() || mN.isDam()
+                || mE.isWall() || mE.isDam()
+                || mS.isWall() || mS.isDam()
+                || mW.isWall() || mW.isDam();
+    }*/
 
     public static boolean tryMove(RobotController rc, Direction d) throws GameActionException {
         if (rc.canMove(d)) {
@@ -53,7 +66,7 @@ public strictfp class BugNavigation {
             return true;
         }
         MapLocation l = rc.adjacentLocation(d);
-        if (rc.canFill(l)) {
+        if (/*(l.x + l.y) % 2 == 1 && */rc.canFill(l)) {
             rc.fill(l);
             return true;
         }

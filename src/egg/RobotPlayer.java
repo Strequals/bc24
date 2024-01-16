@@ -71,6 +71,7 @@ public strictfp class RobotPlayer {
     static int numEnemies;
     static int roundsMicroNoAction = 0;
     static MapLocation nearestEnemy;
+    static MapLocation nearestAlly;
     static boolean isThreatened;
     static boolean isAttacked;
 
@@ -259,10 +260,19 @@ public strictfp class RobotPlayer {
         nearestEnemy = null;
         int neDist = 1000000;
         
+        nearestAlly = null;
+        int naDist = 1000000;
+        
         int eDist;
+        int aDist;
         for (RobotInfo info : nearbyRobots) {
             if (info.team == team) {
                 numAllies++;
+                aDist = info.location.distanceSquaredTo(curr);
+                if (aDist < naDist) {
+                    naDist = aDist;
+                    nearestAlly = info.location;
+                }
             } else {
                 numEnemies++;
                 eDist = info.location.distanceSquaredTo(curr);
@@ -340,9 +350,10 @@ public strictfp class RobotPlayer {
                 roundsMicroNoAction = 0;
             }
         } else {
-
+            
+            boolean defendingFlag = false;
             if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
-                tryDefendFlags(rc);
+                defendingFlag = defendingFlag || tryDefendFlags(rc);
             }
             
 
@@ -361,7 +372,7 @@ public strictfp class RobotPlayer {
                 }
                 //tryBuildDefenses(rc);
             } else {
-                if (rc.isMovementReady()) {
+                if (rc.isMovementReady() && !defendingFlag) {
                     if (tryCollectCrumbs(rc, true)) {
                         nearbyRobots = rc.senseNearbyRobots();
                         Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
@@ -380,14 +391,15 @@ public strictfp class RobotPlayer {
 
                 if (seekingEnemy) {
                     if (round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS
-                            && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
+                            && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT
+                            && !defendingFlag) {
                         if (seekEnemy(rc)) {
                             nearbyRobots = rc.senseNearbyRobots();
                             Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
                         }
                     }
                 }
-                if (!collecting && rc.isMovementReady()) {
+                if (!collecting && rc.isMovementReady() && !defendingFlag) {
                     rc.setIndicatorString("EXPLORING. seeking enemy? " + seekingEnemy);
                     explore(rc);
                     if (rc.getMovementCooldownTurns() >= GameConstants.COOLDOWN_LIMIT) {
@@ -694,7 +706,7 @@ public strictfp class RobotPlayer {
     public static boolean tryReturnBase(RobotController rc) throws GameActionException {
         MapLocation loc = rc.getLocation();
 
-        if (isThreatened) {
+        if (rc.hasFlag() && isThreatened && nearestAlly != null && nearestAlly.distanceSquaredTo(loc) > 2) {
             MapLocation[] m = new MapLocation[9];
             for (int i = 9; i-->0;) m[i] = loc.add(allDirections[i]);
             double[] scores = new double[9];
@@ -792,8 +804,9 @@ public strictfp class RobotPlayer {
             }
         }
         if (closest != null) {
-            if (closestDist <= 4) return tryMoveAway(rc, closest) || tryReturnBase(rc);
-            else return BugNavigation.move(rc, closest, true);
+            if (closestDist <= 2) return tryMoveAway(rc, closest) || tryReturnBase(rc);
+            else if (closestDist > 8) return BugNavigation.move(rc, closest, true);
+            else return true;
         }
         return false;
     }

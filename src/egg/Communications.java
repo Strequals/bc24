@@ -217,6 +217,7 @@ public strictfp class Communications {
         for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
+            rc.setIndicatorDot(l, 255, 0, 0);
             score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) >> (round - reportRound);
             score /= (1 + Math.sqrt(curr.distanceSquaredTo(l)));
             if (score > bestScore) {

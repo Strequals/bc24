@@ -1,4 +1,4 @@
-package egg;
+package egg0117v1;
 
 import battlecode.common.*;
 
@@ -41,7 +41,6 @@ public strictfp class BugNavigation {
     public static int minDist;
     public static MapLocationMultiSet visited = new MapLocationMultiSet();
     public static MapLocationMultiSet banned = new MapLocationMultiSet();
-    public static int round;
 
     public static boolean canMove(RobotController rc, Direction d) {
         MapLocation loc = rc.adjacentLocation(d);
@@ -107,7 +106,6 @@ public strictfp class BugNavigation {
     
     public static boolean move(RobotController rc, MapLocation target, boolean persistence, boolean fill) throws GameActionException {
         MapLocation loc = rc.getLocation();
-        round = rc.getRoundNum();
         if (persistence && bugging) {
             /*if (prevTarget == null) {
                 prevTarget = target;
@@ -149,31 +147,6 @@ public strictfp class BugNavigation {
             Direction dirObstacle = loc.directionTo(lastObstacle);
             if (canMove(rc, dirObstacle)) {reset(loc, target);}
         }
-
-        MapLocation next;
-        MapInfo mi;
-        if (bugging) {
-            Direction dirObstacle = loc.directionTo(lastObstacle);
-            next = loc.add(dirObstacle);
-            if (rc.onTheMap(next)) {
-                mi = rc.senseMapInfo(next);
-                if (round > 100 && mi.isDam()) {
-                    // Wait for dam to come down;
-                    return true;
-                }
-            }
-        } else {
-            next = loc.add(dirTarget);
-            if (rc.onTheMap(next)) {
-                mi = rc.senseMapInfo(next);
-                if (round > 100 && mi.isDam()) {
-                    // Wait for dam to come down;
-                    return true;
-                }
-            }
-
-        }
-
 
 
         if (visited.count(loc) >= 2) {

@@ -1,4 +1,4 @@
-package egg;
+package egg0116v1;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -89,7 +89,7 @@ public strictfp class Explore {
                 }
             }
         }
-        if (best == null) System.out.println("WTF?");
+        rc.setIndicatorString("ruh roh: " + center + "," + locs + "," + totalcons);
         return best;
     }
 

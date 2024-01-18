@@ -87,7 +87,8 @@ public strictfp class Micro {
             if (!canMove) return;
             int dist = robot.location.distanceSquaredTo(l);
             if (dist < minDistToAlly) minDistToAlly = dist;
-            if (dist <= healRadius) {
+            if (dist <= healRadius &&
+                    (robot.getAttackLevel() >= 4 || robot.getBuildLevel() >= 4 || robot.getHealLevel() <= 2)) {
                 alliesTargeting++;
             }
         }
@@ -157,7 +158,7 @@ public strictfp class Micro {
         flagTaken = false;
         defendSpot = defSpot;
         isAggro = aggro;
-        canAttackNext = rc.getActionCooldownTurns() - (rc.getRoundNum() >= GameConstants.GLOBAL_UPGRADE_ROUNDS ? GameConstants.COOLDOWNS_PER_TURN + GlobalUpgrade.ACTION.cooldownReductionChange : GameConstants.COOLDOWNS_PER_TURN) < GameConstants.COOLDOWN_LIMIT;
+        canAttackNext = rc.getActionCooldownTurns() - GameConstants.COOLDOWNS_PER_TURN < GameConstants.COOLDOWN_LIMIT;
         numAllies = 0;
         numEnemies = 0;
         //adjacentAllies = 0;

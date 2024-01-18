@@ -1,4 +1,4 @@
-package egg;
+package egg0117v1;
 
 import battlecode.common.*;
 import java.util.Random;

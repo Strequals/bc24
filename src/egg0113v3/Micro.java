@@ -147,7 +147,7 @@ public strictfp class Micro {
         flagTaken = false;
         defendSpot = defSpot;
         isAggro = aggro;
-        canAttackNext = rc.getActionCooldownTurns() - (rc.getRoundNum() >= GameConstants.GLOBAL_UPGRADE_ROUNDS ? GameConstants.COOLDOWNS_PER_TURN + GlobalUpgrade.ACTION.cooldownReductionChange : GameConstants.COOLDOWNS_PER_TURN) < GameConstants.COOLDOWN_LIMIT;
+        canAttackNext = rc.getActionCooldownTurns() - GameConstants.COOLDOWNS_PER_TURN < GameConstants.COOLDOWN_LIMIT;
         numAllies = 0;
         numEnemies = 0;
 

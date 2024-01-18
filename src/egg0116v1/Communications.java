@@ -1,4 +1,4 @@
-package egg;
+package egg0116v1;
 
 import battlecode.common.*;
 
@@ -17,13 +17,12 @@ public strictfp class Communications {
     
 
     public static final int SPAWN_SCORE = 10;
-    public static final int HOLDING_FLAG_SCORE = 20;
+    public static final int HOLDING_FLAG_SCORE = 10;
     public static final int STOLEN_FLAG_SCORE = 90;
-    public static final int THREATENED_FLAG_BASE_SCORE = 60;
+    public static final int THREATENED_FLAG_SCORE = 60;
 
 
     public static final int CLAIM_DEFENDER_RANGE = 8;
-    public static final double DECAY_RATE = 0.7;
 
     public static int[] array = new int[64];
     static Team team;
@@ -105,30 +104,29 @@ public strictfp class Communications {
      * score[3:0] (4) | x (6) | y(6)
      */
     public static void updateEnemies(RobotController rc, RobotInfo[] robots, FlagInfo[] myNearbyFlags) throws GameActionException {
-        double totalScore = 0;
+        int totalScore = 0;
         MapLocation target = null;
-        double targetScore = 0;
+        int targetScore = 0;
         
-        /*for (FlagInfo flag : myNearbyFlags) {
+        for (FlagInfo flag : myNearbyFlags) {
             if (!flag.isPickedUp()) {
                 totalScore += THREATENED_FLAG_SCORE;
                 break;
             }
-        }*/
+        }
+
+        if (rc.hasFlag()) {
+            totalScore += HOLDING_FLAG_SCORE;
+            target = rc.getLocation();
+        }
         
-        double score;
+        int score;
         for (RobotInfo robot : robots) {
             if (robot.team != team) {
-                score = 2;
+                score = 1;
                 if (robot.hasFlag) score += STOLEN_FLAG_SCORE;
-                for (FlagInfo flag : myNearbyFlags) {
-                    if (!flag.isPickedUp()) {
-                        totalScore += THREATENED_FLAG_BASE_SCORE / (1 + robot.location.distanceSquaredTo(flag.getLocation()));
-                    }
-                }
             } else {
-                score = -1;
-                if (robot.hasFlag) score += HOLDING_FLAG_SCORE;
+                score = 0;
             }
             totalScore += score;
             if (score > targetScore) {
@@ -137,30 +135,23 @@ public strictfp class Communications {
             }
         }
 
-        if (rc.hasFlag()) {
-            totalScore += HOLDING_FLAG_SCORE;
-            target = rc.getLocation();
-        }
 
-        int totalScore_i = (int) StrictMath.round(totalScore);
-
-        double lowestScore = INF;
+        int lowestScore = INF;
         int lowestIndex = -1;
         
         int reportRound;
         MapLocation l;
-        double reportScore;
         for (int i = ENEMIES_START + ENEMIES_NUM * 2 - 2; i >= ENEMIES_START; i -= 2) {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
-            score = ((array[i] % 32) * 16 + (array[i+1] >> 12))
-                * StrictMath.pow(DECAY_RATE, (round - reportRound));
+            score = (array[i] % 32) * 16 + (array[i+1] >> 12);
+            score = score >> (round - reportRound);
             rc.setIndicatorDot(l, 255, 0, 0);
             if (target != null) {
                 if (l.distanceSquaredTo(target) <= UPDATE_DIST_SQ) {
                     if (totalScore > score) {
-                        array[i] = (totalScore_i >> 4) + (round << 5);
-                        array[i+1] = target.y + ((target.x + ((totalScore_i % 16) << 6)) << 6);
+                        array[i] = (totalScore >> 4) + (round << 5);
+                        array[i+1] = target.y + ((target.x + ((totalScore % 16) << 6)) << 6);
                         rc.writeSharedArray(i, array[i]);
                         rc.writeSharedArray(i+1, array[i+1]);
                     }
@@ -177,15 +168,14 @@ public strictfp class Communications {
                     rc.writeSharedArray(i, 0);
                     rc.writeSharedArray(i+1, 0);
                 }
-                return;
             }
         }
 
         if (target == null) return;
 
         if (lowestScore < totalScore) {
-            array[lowestIndex] = (totalScore_i >> 4) + (round << 5);
-            array[lowestIndex+1] = target.y + ((target.x + ((totalScore_i % 16) << 6)) << 6);
+            array[lowestIndex] = (totalScore >> 4) + (round << 5);
+            array[lowestIndex+1] = target.y + ((target.x + ((totalScore % 16) << 6)) << 6);
             rc.writeSharedArray(lowestIndex, array[lowestIndex]);
             rc.writeSharedArray(lowestIndex+1, array[lowestIndex+1]);
         }
@@ -204,8 +194,8 @@ public strictfp class Communications {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
             rawScore = (array[i] % 32) * 16 + (array[i+1] >> 12);
-            //if (rawScore < HOLDING_FLAG_SCORE) continue;
-            score = rawScore * StrictMath.pow(DECAY_RATE, (round - reportRound));
+            if (rawScore < SPAWN_SCORE) continue;
+            score = rawScore >> (round - reportRound);
             if (score > bestScore) {
                 bestScore = score;
                 bestIndex = i;
@@ -242,7 +232,7 @@ public strictfp class Communications {
             }
         }
 
-        return bestLoc;
+        return null;
     }
 
     public static MapLocation readEnemies(RobotController rc, MapLocation curr, boolean useSpawns, Explore explore) throws GameActionException {
@@ -257,8 +247,8 @@ public strictfp class Communications {
             reportRound = array[i] >> 5;
             l = new MapLocation((array[i+1] >> 6) % 64, array[i+1] % 64);
             rc.setIndicatorDot(l, 255, 0, 0);
-            score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) * StrictMath.pow(DECAY_RATE, (round - reportRound));
-            score /= (1 + StrictMath.sqrt(curr.distanceSquaredTo(l)));
+            score = ((array[i] % 32) * 16 + (array[i+1] >> 12)) >> (round - reportRound);
+            score /= (1 + Math.sqrt(curr.distanceSquaredTo(l)));
             if (score > bestScore) {
                 bestScore = score;
                 bestIndex = i;

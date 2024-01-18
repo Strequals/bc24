@@ -1,4 +1,4 @@
-package egg;
+package egg0117v2;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -74,7 +74,6 @@ public strictfp class RobotPlayer {
     static int roundsMicroNoAction = 0;
     static MapLocation nearestEnemy;
     static MapLocation nearestAlly;
-    static MapLocation nearestHealingAlly;
     static boolean isThreatened;
     static boolean isAttacked;
 
@@ -303,9 +302,6 @@ public strictfp class RobotPlayer {
         
         nearestAlly = null;
         int naDist = 1000000;
-
-        nearestHealingAlly = null;
-        int haDist = 1000000;
         
         int eDist;
         int aDist;
@@ -316,12 +312,6 @@ public strictfp class RobotPlayer {
                 if (aDist < naDist) {
                     naDist = aDist;
                     nearestAlly = info.location;
-                }
-                if (info.getAttackLevel() >= 4 || info.getBuildLevel() >= 4 || info.getHealLevel() <= 2) {
-                    if (aDist < haDist) {
-                        haDist = aDist;
-                        nearestHealingAlly = info.location;
-                    }
                 }
             } else {
                 numEnemies++;
@@ -361,27 +351,21 @@ public strictfp class RobotPlayer {
         if (numEnemies > 0 && round >= GameConstants.SETUP_ROUNDS - 4) {
             if (isBuilder && !isAttacked && rc.isActionReady() && rc.getCrumbs() >= TrapType.EXPLOSIVE.buildCost) {
                 tryBuildAggro(rc, nearestEnemy);
-                //tryBuildStuns(rc);
             }
-
-            if (nearbyCrumbs.length > 0 && rc.isActionReady()) tryStunForCrumbs(rc);
 
             if (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 tryAttack(rc);
             }
-            if (nearbyCrumbs.length > 0) {
-                //if (rc.isActionReady()) tryStunForCrumbs(rc);
-                if (rc.isMovementReady()) {
-                    if (nearestEnemy.isWithinDistanceSquared(curr, 4)) {
-                        if (tryCollectCrumbs(rc, true)) {
-                            nearbyRobots = rc.senseNearbyRobots();
-                            Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
-                        }
-                    } else {
-                        if (tryCollectCrumbs(rc, false)) {
-                            nearbyRobots = rc.senseNearbyRobots();
-                            Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
-                        }
+            if (rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT && nearbyCrumbs.length > 0) {
+                if (nearestEnemy.isWithinDistanceSquared(curr, 4)) {
+                    if (tryCollectCrumbs(rc, true)) {
+                        nearbyRobots = rc.senseNearbyRobots();
+                        Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
+                    }
+                } else {
+                    if (tryCollectCrumbs(rc, false)) {
+                        nearbyRobots = rc.senseNearbyRobots();
+                        Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
                     }
                 }
             }
@@ -398,10 +382,6 @@ public strictfp class RobotPlayer {
             }
             if (!isMicro && rc.getMovementCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 BugNavigation.move(rc, nearestEnemy, true);
-            }
-
-            if (nearbyCrumbs.length > 0 && rc.isActionReady()) {
-                tryStunForCrumbs(rc);
             }
 
             if (rc.isActionReady()) {
@@ -449,7 +429,7 @@ public strictfp class RobotPlayer {
 
                 roundSeek = round;
 
-                if (rc.getHealth() > 750 || nearestHealingAlly == null) {
+                if (rc.getHealth() > 750 || nearestAlly == null) {
                     boolean seeking = false;
                     if (!collecting && seekingEnemy) {
                         if (round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS
@@ -471,8 +451,8 @@ public strictfp class RobotPlayer {
                         }
                     }
                 } else {
-                    if (nearestHealingAlly.distanceSquaredTo(curr) > GameConstants.HEAL_RADIUS_SQUARED) {
-                        BugNavigation.move(rc, nearestHealingAlly, true, true);
+                    if (nearestAlly.distanceSquaredTo(curr) > GameConstants.HEAL_RADIUS_SQUARED) {
+                        BugNavigation.move(rc, nearestAlly, true, true);
                     }
                 }
             }
@@ -549,17 +529,12 @@ public strictfp class RobotPlayer {
                 }
             }
         }
-
+        
         return best;
     }
 
     public static boolean tryHeal(RobotController rc) throws GameActionException {
         if (rc.hasFlag()) return false;
-        /*if (rc.getExperience(SkillType.HEAL) == SkillType.HEAL.getExperience(4)-1
-                && rc.getExperience(SkillType.ATTACK) < SkillType.ATTACK.getExperience(4)
-                && rc.getExperience(SkillType.BUILD) < SkillType.BUILD.getExperience(4)) {
-            return false;
-        }*/
         MapLocation best = getAllyTarget(rc, rc.getLocation());
         if (best != null) {
             rc.heal(best);
@@ -569,13 +544,6 @@ public strictfp class RobotPlayer {
     }
 
     public static boolean tryMoveHeal(RobotController rc) throws GameActionException {
-        if (rc.hasFlag()) return false;
-        //if (rc.getExperience(SkillType.HEAL) == SkillType.HEAL.getExperience(4)-1) return false;
-        /*if (rc.getExperience(SkillType.HEAL) == SkillType.HEAL.getExperience(4)-1
-                && rc.getExperience(SkillType.ATTACK) < SkillType.ATTACK.getExperience(4)
-                && rc.getExperience(SkillType.BUILD) < SkillType.BUILD.getExperience(4)) {
-            return false;
-        }*/
         /*MapLocation best = null;
         MapLocation curr = rc.getLocation();
         double bestScore = 1000000;
@@ -645,10 +613,6 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-    public static int manhattan(MapLocation a, MapLocation b) {
-        return StrictMath.abs(a.x - b.x) + StrictMath.abs(a.y - b.y);
-    }
-
     public static boolean tryCollectCrumbs(RobotController rc, boolean fill) throws GameActionException {
         MapLocation loc = rc.getLocation();
         
@@ -656,11 +620,8 @@ public strictfp class RobotPlayer {
         double bestScore = 1000000;
         
         double score;
-        MapInfo mi;
         for (MapLocation nearbyCrumb : nearbyCrumbs) {
-            mi = rc.senseMapInfo(nearbyCrumb);
-            score = loc.distanceSquaredTo(nearbyCrumb) + 1.0 / mi.getCrumbs();
-            if (mi.getTrapType() == TrapType.STUN) score -= 4; // Lower priority if trap is built
+            score = loc.distanceSquaredTo(nearbyCrumb) + 1.0 / rc.senseMapInfo(nearbyCrumb).getCrumbs();
             if (score < bestScore && !BugNavigation.isBanned(nearbyCrumb)) {
                 bestScore = score;
                 best = nearbyCrumb;
@@ -704,7 +665,7 @@ public strictfp class RobotPlayer {
         if (rc.hasFlag()) return false;
         MapLocation loc = rc.getLocation();
 
-        if (nearestEnemy != null && rc.canSenseLocation(nearestEnemy) && hasLineOfSight(rc, loc, nearestEnemy)) {
+        if (nearestEnemy != null && hasLineOfSight(rc, loc, nearestEnemy)) {
             Direction d = loc.directionTo(nearestEnemy);
             MapLocation[] pos = {loc.add(d), loc.add(d.rotateLeft()), loc.add(d.rotateRight()),
                 loc, loc.add(d.rotateLeft().rotateLeft()), loc.add(d.rotateRight().rotateRight())};
@@ -931,135 +892,32 @@ public strictfp class RobotPlayer {
             }
         }
 
-        tryBuild(rc, 0, TrapType.STUN);
-        //tryBuild(rc, 0, TrapType.EXPLOSIVE);
+        tryBuild(rc, 2, TrapType.STUN);
+        tryBuild(rc, 0, TrapType.EXPLOSIVE);
         rc.setIndicatorString("Build aggressive");
-    }
-
-    public static void tryBuildStuns(RobotController rc) throws GameActionException {
-        MapLocation curr = rc.getLocation();
-        if (!rc.canSenseLocation(nearestEnemy) || !hasLineOfSight(rc, curr, nearestEnemy)) {
-            return;
-        }
-        /*int i = (curr.x + curr.y) % 2;
-        MapLocation m;
-        MapInfo mi;
-        for (int i = 4; i-->-4;) {
-            for (int j = 4; j-->-4;) {
-                if ((i + j) % 2 == 1) continue;
-                m = curr.translate(i, j);
-                if (rc.canSenseLocation(m)) {
-                    mi = rc.senseMapInfo(
-                }
-            }
-        }*/
-
-
-
-        MapLocation m;
-        double score;
-        MapLocation best = null;
-        double bestScore = 0;
-        MapLocation bestBuild = null;
-        double bestBuildScore = 0;
-        int dist;
-
-        for (Direction d : allDirections) {
-            m = curr.add(d);
-            if ((m.x + m.y) % 2 == 0 && rc.canBuild(TrapType.STUN, m)) {
-                score = 1.0 / m.distanceSquaredTo(nearestEnemy);
-                if (score > bestBuildScore) {
-                    bestBuildScore = score;
-                    bestBuild = m;
-                }
-            }
-        }
-
-        if (bestBuild != null) {
-            rc.build(TrapType.STUN, bestBuild);
-            bestBuild = null;
-        }
-
-        for (MapInfo mi : rc.senseNearbyMapInfos(-1)) {
-            m = mi.getMapLocation();
-            dist = m.distanceSquaredTo(nearestEnemy);
-            if ((m.x + m.y) % 2 == 0 && mi.isPassable() && mi.getTrapType() == TrapType.NONE
-                    && dist > 2 && dist < GameConstants.VISION_RADIUS_SQUARED) {
-                score = 1.0 / dist;
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = m;
-                }
-                if (rc.canBuild(TrapType.STUN, m) && score > bestBuildScore) {
-                    bestBuildScore = score;
-                    bestBuild = m;
-                }
-            }
-        }
-
-        if (rc.isMovementReady() && best != null) {
-            BugNavigation.move(rc, best, true, true);
-        }
-
-        if (bestBuild != null) {
-            rc.build(TrapType.STUN, bestBuild);
-        }
-
-    }
-
-    public static void tryStunForCrumbs(RobotController rc) throws GameActionException {
-        MapLocation curr = rc.getLocation();
-        MapLocation m;
-        MapInfo mi;
-
-        MapLocation closest = null;
-        int closestDist = 1000000;
-        int dist;
-        int num = 0;
-        for (Direction d : directions) {
-            m = curr.add(d);
-            mi = rc.senseMapInfo(m);
-            if (mi.getCrumbs() >= 25) {
-                num++;
-                dist = m.distanceSquaredTo(nearestEnemy);
-                if (dist < closestDist && rc.canBuild(TrapType.STUN, m)) {
-                    closestDist = dist;
-                    closest = m;
-                }
-            }
-        }
-
-        if (closest != null && num >= 2 && closestDist < GameConstants.VISION_RADIUS_SQUARED) {
-            rc.build(TrapType.STUN, closest);
-        }
     }
 
     public static void tryDigAndBuild(RobotController rc) throws GameActionException {
         MapLocation curr = rc.getLocation();
-        boolean isMaxed = rc.getExperience(SkillType.BUILD) >= SkillType.BUILD.getExperience(6);
-        if (isMaxed) {
+        if (rc.getExperience(SkillType.BUILD) >= SkillType.BUILD.getExperience(6)) {
             boolean shouldBuild = (numEnemies >= 2 && numAllies >= 2);
             if (shouldBuild && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT
                     && round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS
                     && rc.getCrumbs() > TrapType.EXPLOSIVE.buildCost + 50) {
                 if (!tryBuild(rc, 5, TrapType.STUN)) {
-                    //if (!tryBuild(rc, 13, TrapType.EXPLOSIVE)) {
+                    if (!tryBuild(rc, 13, TrapType.EXPLOSIVE)) {
                         /*if (rc.getCrumbs() > 2 * TrapType.EXPLOSIVE.buildCost + 50) {
                             tryBuild(rc, 0, TrapType.EXPLOSIVE);
                         }*/
-                    //}
-                }
-                //tryBuildStuns(rc);
-            }
-        }
-        if (!isMaxed) {
-            if (!isThreatened) {
-            MapLocation m;
-                for (Direction d : directions) {
-                    m = curr.add(d);
-                    if (/*(m.x + m.y) % 2 == 1 &&*/ rc.canDig(m)) {
-                        rc.dig(m);
                     }
+                }
+            }
+        } else {
+            MapLocation m;
+            for (Direction d : directions) {
+                m = curr.add(d);
+                if (rc.canDig(m)) {
+                    rc.dig(m);
                 }
             }
         }
@@ -1095,20 +953,6 @@ public strictfp class RobotPlayer {
                     }
                 }
             }
-            /*if (rc.canBuild(TrapType.STUN, nearbyFlag.getLocation())) {
-                rc.build(TrapType.STUN, nearbyFlag.getLocation());
-                continue;
-            }
-            if (rc.canSenseLocation(nearbyFlag.getLocation())) {
-                mi = rc.senseMapInfo(nearbyFlag.getLocation());
-                if (mi.getTrapType() == TrapType.NONE) {
-                    dist = nearbyFlag.getLocation().distanceSquaredTo(curr);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closest = nearbyFlag.getLocation();
-                    }
-                }
-            }*/
         }
 
         if (closest != null) BugNavigation.move(rc, closest, true, true);

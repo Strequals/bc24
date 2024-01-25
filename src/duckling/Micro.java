@@ -1,4 +1,4 @@
-package egg;
+package duckling;
 
 import battlecode.common.*;
 
@@ -10,7 +10,6 @@ public strictfp class Micro {
     static final int healRadius = 4;
     static final int hurtHealth = 450;
     static final int DEFEND_RADIUS = 10;
-    static final int BASE_ATTACK = 150;
 
     static MicroInfo[] mi;
     static RobotController rc;
@@ -21,13 +20,14 @@ public strictfp class Micro {
     static boolean canAttack;
     static boolean flagTaken;
     static MapLocation defendSpot;
-    static boolean isAggro;
     static boolean canAttackNext;
     static boolean canMoveNext;
     static int numAllies = 0;
     static int numEnemies = 0;
     static boolean healer;
-    static int dps = 0;
+    static boolean stunned;
+    static boolean isSetup;
+    static boolean defendingCarrier;
     //static int adjacentAllies = 0;
 
     static Direction[] dirs = {
@@ -56,12 +56,12 @@ public strictfp class Micro {
         int minDistToEnemy = INF;
         int minDistToAlly = INF;
         int inRange = 0;
-        //int enemiesAttacking = 0;
-        int dpsAttacking = 0; // dps of enemies attacking me
-        int dpsTargeting = 0; // dps of enemies targeting me
+        int enemiesAttacking = 0;
+        int enemiesTargeting = 0;
         int alliesTargeting = 0;
         int minDistToFlag = INF;
         boolean isDefense = false;
+        boolean isSpace = false;
         boolean diagonal = false;
 
         public MicroInfo(Direction d) throws GameActionException {
@@ -69,7 +69,10 @@ public strictfp class Micro {
             if (d == Direction.NORTHEAST || d == Direction.SOUTHEAST || d == Direction.SOUTHWEST || d == Direction.NORTHWEST) diagonal = true;
             l = curr.add(d);
             canMove = d == Direction.CENTER || rc.canMove(d);
-            if (defendSpot != null) isDefense = l.isWithinDistanceSquared(defendSpot, DEFEND_RADIUS);
+            if (defendSpot != null) {
+                isDefense = l.isWithinDistanceSquared(defendSpot, DEFEND_RADIUS);
+                isSpace = !l.isWithinDistanceSquared(defendSpot, 2);
+            }
         }
 
         void updateEnemy(RobotInfo robot) {
@@ -80,10 +83,12 @@ public strictfp class Micro {
             if (dist <= attackRadius) {
                 if (robot.hasFlag) inRange = 2;
                 else if (inRange == 0) inRange = 1;
-                dpsAttacking += BASE_ATTACK;
-                dpsTargeting += BASE_ATTACK;
-            } else if (robot.location.add(robot.location.directionTo(l)).isWithinDistanceSquared(l, attackRadius)) {
-                dpsTargeting += BASE_ATTACK;
+                if (!stunned) {
+                    enemiesAttacking++;
+                    enemiesTargeting++;
+                }
+            } else if (robot.location.add(robot.location.directionTo(l)).isWithinDistanceSquared(l, attackRadius) && !stunned) {
+                enemiesTargeting++;
             }
         }
 
@@ -100,9 +105,18 @@ public strictfp class Micro {
             if (!canMove) return false;
             if (!other.canMove) return true;
 
+            if (isSetup) {
+                if (minDistToEnemy < other.minDistToEnemy) return true;
+                if (minDistToEnemy > other.minDistToEnemy) return false;
+            }
+
             if (flagTaken) {
-                if (minDistToFlag < other.minDistToFlag) return true;
-                if (minDistToFlag > other.minDistToFlag) return false;
+                if (inRange == 2 && other.inRange < 2) return true;
+                if (inRange < 2 && other.inRange == 2) return false;
+                if (inRange < 2) {
+                    if (minDistToFlag < other.minDistToFlag) return true;
+                    if (minDistToFlag > other.minDistToFlag) return false;
+                }
             }
 
             if (defendSpot != null) {
@@ -110,23 +124,33 @@ public strictfp class Micro {
                 if (!isDefense && other.isDefense) return false;
             }
 
-            if (canAttack && !hurt) {
+            if (canAttack) {
                 if (inRange > other.inRange) return true;
                 if (inRange < other.inRange) return false;
             }
 
-            if (dpsAttacking < other.dpsAttacking) return true;
-            if (dpsAttacking > other.dpsAttacking) return false;
+            if (defendSpot != null) {
+                if (isSpace && !other.isSpace) return true;
+                if (!isSpace && other.isSpace) return false;
+            }
 
-            if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
+            if (enemiesAttacking < other.enemiesAttacking) return true;
+            if (enemiesAttacking > other.enemiesAttacking) return false;
+
+            /*if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
                 if (!diagonal && other.diagonal) return true;
                 if (diagonal && !other.diagonal) return false;
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
-            }
+            }*/
 
-            if (dpsTargeting < other.dpsTargeting) return true;
-            if (dpsTargeting > other.dpsTargeting) return false;
+            if (enemiesTargeting < other.enemiesTargeting) return true;
+            if (enemiesTargeting > other.enemiesTargeting) return false;
+
+            /*if (canAttack && hurt && enemiesAttacking == 0 && enemiesTargeting == 0) {
+                if (inRange > other.inRange) return true;
+                if (inRange < other.inRange) return false;
+            }*/
             
             if (!hurt && inRange == 0) {
                 if (canAttackNext) {
@@ -146,24 +170,33 @@ public strictfp class Micro {
             if (!diagonal && other.diagonal) return true;
             if (diagonal && !other.diagonal) return false;
 
-            return minDistToAlly < other.minDistToAlly;
+            if (alliesTargeting == 0) {
+                if (minDistToAlly < other.minDistToAlly) return true;
+                if (minDistToAlly > other.minDistToAlly) return false;
+            }
+
+            
+            return minDistToEnemy > other.minDistToEnemy;
+
+            
         }
     }
 
     boolean doMicro(RobotInfo[] nearbyRobots) throws GameActionException {
-        return doMicro(nearbyRobots, null, true);
+        return doMicro(nearbyRobots, null, "", false);
     }
 
-    boolean doMicro(RobotInfo[] nearbyRobots, MapLocation defSpot, boolean aggro) throws GameActionException {
+    boolean doMicro(RobotInfo[] nearbyRobots, MapLocation defSpot, String stunnedList, boolean defCarrier) throws GameActionException {
         curr = rc.getLocation();
         hurt = rc.getHealth() <= hurtHealth;
         canAttack = rc.isActionReady();
         flagTaken = false;
+        isSetup = rc.getRoundNum() < GameConstants.SETUP_ROUNDS;
         defendSpot = defSpot;
-        isAggro = aggro;
         canAttackNext = rc.getActionCooldownTurns() - GameConstants.COOLDOWNS_PER_TURN < GameConstants.COOLDOWN_LIMIT;
         numAllies = 0;
         numEnemies = 0;
+        defendingCarrier = defCarrier;
         //adjacentAllies = 0;
 
         mi[0] = new MicroInfo(Direction.NORTH);
@@ -175,8 +208,6 @@ public strictfp class Micro {
         mi[6] = new MicroInfo(Direction.WEST);
         mi[7] = new MicroInfo(Direction.NORTHWEST);
         mi[8] = new MicroInfo(Direction.CENTER);
-
-        int totalDps = 0;
         
         for (RobotInfo robot : nearbyRobots) {
             if (robot.team == team) {
@@ -192,9 +223,16 @@ public strictfp class Micro {
                 mi[8].updateAlly(robot);
                 numAllies++;
             } else {
-                if (robot.hasFlag) flagTaken = true;
                 //if (robot.location.isWithinDistanceSquared(curr, 2)) adjacentAllies++;
-                dps = BASE_ATTACK/* + SkillType.ATTACK.getSkillEffect(robot.attackLevel)*/;
+
+                //stunned = detTrap != null && robot.location.isWithinDistanceSquared(detonatedTrap, TrapType.STUN.interactRadius);
+
+                if (robot.hasFlag) {flagTaken = true; stunned = true;}
+                else {
+                    stunned = stunnedList.contains(""+robot.ID);
+                    if (stunned) rc.setIndicatorDot(robot.location, 255, 255, 0);
+                    //stunned = false;
+                }
                 mi[0].updateEnemy(robot);
                 mi[1].updateEnemy(robot);
                 mi[2].updateEnemy(robot);
@@ -207,8 +245,6 @@ public strictfp class Micro {
                 numEnemies++;
             }
         }
-        totalDps += dps;
-        rc.setIndicatorString("TDPS:"+totalDps);
 
         MicroInfo best = mi[8];
 

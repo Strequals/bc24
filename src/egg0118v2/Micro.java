@@ -1,4 +1,4 @@
-package egg;
+package egg0118v2;
 
 import battlecode.common.*;
 
@@ -10,7 +10,6 @@ public strictfp class Micro {
     static final int healRadius = 4;
     static final int hurtHealth = 450;
     static final int DEFEND_RADIUS = 10;
-    static final int BASE_ATTACK = 150;
 
     static MicroInfo[] mi;
     static RobotController rc;
@@ -27,7 +26,6 @@ public strictfp class Micro {
     static int numAllies = 0;
     static int numEnemies = 0;
     static boolean healer;
-    static int dps = 0;
     //static int adjacentAllies = 0;
 
     static Direction[] dirs = {
@@ -56,9 +54,8 @@ public strictfp class Micro {
         int minDistToEnemy = INF;
         int minDistToAlly = INF;
         int inRange = 0;
-        //int enemiesAttacking = 0;
-        int dpsAttacking = 0; // dps of enemies attacking me
-        int dpsTargeting = 0; // dps of enemies targeting me
+        int enemiesAttacking = 0;
+        int enemiesTargeting = 0;
         int alliesTargeting = 0;
         int minDistToFlag = INF;
         boolean isDefense = false;
@@ -80,10 +77,10 @@ public strictfp class Micro {
             if (dist <= attackRadius) {
                 if (robot.hasFlag) inRange = 2;
                 else if (inRange == 0) inRange = 1;
-                dpsAttacking += BASE_ATTACK;
-                dpsTargeting += BASE_ATTACK;
+                enemiesAttacking++;
+                enemiesTargeting++;
             } else if (robot.location.add(robot.location.directionTo(l)).isWithinDistanceSquared(l, attackRadius)) {
-                dpsTargeting += BASE_ATTACK;
+                enemiesTargeting++;
             }
         }
 
@@ -115,8 +112,8 @@ public strictfp class Micro {
                 if (inRange < other.inRange) return false;
             }
 
-            if (dpsAttacking < other.dpsAttacking) return true;
-            if (dpsAttacking > other.dpsAttacking) return false;
+            if (enemiesAttacking < other.enemiesAttacking) return true;
+            if (enemiesAttacking > other.enemiesAttacking) return false;
 
             if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
                 if (!diagonal && other.diagonal) return true;
@@ -125,8 +122,8 @@ public strictfp class Micro {
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             }
 
-            if (dpsTargeting < other.dpsTargeting) return true;
-            if (dpsTargeting > other.dpsTargeting) return false;
+            if (enemiesTargeting < other.enemiesTargeting) return true;
+            if (enemiesTargeting > other.enemiesTargeting) return false;
             
             if (!hurt && inRange == 0) {
                 if (canAttackNext) {
@@ -175,8 +172,6 @@ public strictfp class Micro {
         mi[6] = new MicroInfo(Direction.WEST);
         mi[7] = new MicroInfo(Direction.NORTHWEST);
         mi[8] = new MicroInfo(Direction.CENTER);
-
-        int totalDps = 0;
         
         for (RobotInfo robot : nearbyRobots) {
             if (robot.team == team) {
@@ -194,7 +189,6 @@ public strictfp class Micro {
             } else {
                 if (robot.hasFlag) flagTaken = true;
                 //if (robot.location.isWithinDistanceSquared(curr, 2)) adjacentAllies++;
-                dps = BASE_ATTACK/* + SkillType.ATTACK.getSkillEffect(robot.attackLevel)*/;
                 mi[0].updateEnemy(robot);
                 mi[1].updateEnemy(robot);
                 mi[2].updateEnemy(robot);
@@ -207,8 +201,6 @@ public strictfp class Micro {
                 numEnemies++;
             }
         }
-        totalDps += dps;
-        rc.setIndicatorString("TDPS:"+totalDps);
 
         MicroInfo best = mi[8];
 

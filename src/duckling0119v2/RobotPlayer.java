@@ -1,4 +1,4 @@
-package egg;
+package duckling0119v2;
 
 import battlecode.common.*;
 import java.util.Random;
@@ -52,6 +52,7 @@ public strictfp class RobotPlayer {
 
     static RobotInfo[] nearbyRobots;
     static MapLocation[] nearbyCrumbs;
+    static MapInfo[] nearbyMapInfos;
     static FlagInfo[] enemyFlags;
     static Team team;
     static int round;
@@ -79,14 +80,23 @@ public strictfp class RobotPlayer {
     static boolean isThreatened;
     static boolean isAttacked;
     static boolean isHealer = false;
-    static boolean isBuilderNearby;
+    
+    static MapLocationMultiSet previousTraps;
+    static String stunned0 = "";
+    static String stunned1 = "";
+    static String stunned2 = "";
+    static String stunned3 = "";
 
     public static void run(RobotController rc) throws GameActionException {
         team = rc.getTeam();
         explore = new Explore(rc);
         micro = new Micro(rc);
+        previousTraps = new MapLocationMultiSet();
         while (true) {
             try {
+                if (rc.getRoundNum() - round > 1) {
+                    System.out.println("OUT OF BYTECODE");
+                }
                 round = rc.getRoundNum();
                 setup = round <= GameConstants.SETUP_ROUNDS;
                 Communications.readArray(rc);
@@ -296,7 +306,10 @@ public strictfp class RobotPlayer {
 
         nearbyRobots = rc.senseNearbyRobots();
         nearbyCrumbs = rc.senseNearbyCrumbs(-1);
+        nearbyMapInfos = rc.senseNearbyMapInfos(-1);
         Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
+        checkDetonated(rc);
+
         numAllies = 0;
         numEnemies = 0;
         MapLocation curr = rc.getLocation();
@@ -309,8 +322,6 @@ public strictfp class RobotPlayer {
 
         nearestHealingAlly = null;
         int haDist = 1000000;
-
-        isBuilderNearby = false;
         
         int eDist;
         int aDist;
@@ -328,9 +339,6 @@ public strictfp class RobotPlayer {
                         nearestHealingAlly = info.location;
                     }
                 }
-                if (info.getBuildLevel() >= 4) {
-                    isBuilderNearby = true;
-                }
             } else {
                 numEnemies++;
                 eDist = info.location.distanceSquaredTo(curr);
@@ -342,6 +350,7 @@ public strictfp class RobotPlayer {
         }
         isThreatened = nearestEnemy != null && nearestEnemy.add(nearestEnemy.directionTo(curr)).isWithinDistanceSquared(curr, GameConstants.ATTACK_RADIUS_SQUARED);
         isAttacked = nearestEnemy != null && nearestEnemy.isWithinDistanceSquared(curr, GameConstants.ATTACK_RADIUS_SQUARED);
+
 
         if (defendSpot != null && round >= GameConstants.SETUP_ROUNDS) {
             turnsQuietlyDefended++;
@@ -367,7 +376,7 @@ public strictfp class RobotPlayer {
         }
 
         if (numEnemies > 0 && round >= GameConstants.SETUP_ROUNDS - 4) {
-            if (isBuilder && !isAttacked && rc.isActionReady() && rc.getCrumbs() >= TrapType.STUN.buildCost) {
+            if (isBuilder && !isAttacked && rc.isActionReady() && rc.getCrumbs() >= TrapType.EXPLOSIVE.buildCost) {
                 tryBuildAggro(rc, nearestEnemy);
                 //tryBuildStuns(rc);
             }
@@ -398,7 +407,7 @@ public strictfp class RobotPlayer {
                 BugNavigation.move(rc, nearestEnemy, true);
             }
             boolean aggro = nearbyCrumbs.length > 0;
-            boolean isMicro = rc.isMovementReady() && micro.doMicro(nearbyRobots, defendSpot, aggro);
+            boolean isMicro = rc.isMovementReady() && micro.doMicro(nearbyRobots, defendSpot, stunned0 + stunned1 + stunned2 + stunned3);
             if (isMicro && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT) {
                 nearbyRobots = rc.senseNearbyRobots();
                 Communications.updateEnemies(rc, nearbyRobots, nearbyFlags);
@@ -412,8 +421,8 @@ public strictfp class RobotPlayer {
                 tryStunForCrumbs(rc);
             }
 
-            /*if (rc.isActionReady() && !isBuilder && !isBuilderNearby) {
-                tryNoBuilderBuild(rc);
+            /*if (isBuilder && round > BREAK_TURTLE_ROUND) {
+
             }*/
 
             if (rc.isActionReady()) {
@@ -516,28 +525,40 @@ public strictfp class RobotPlayer {
             tryDig(rc);
         }
 
+        updateTraps();
+
     }
+
+    //static MapLocation secondTarget = null;
     
     public static MapLocation getEnemyTarget(RobotController rc, MapLocation loc) {
         MapLocation best = null;
+        //secondTarget = null;
+        MapLocation curr = rc.getLocation();
         int myDamage = rc.getAttackDamage();
+        //System.out.println("MY DAMAGE IS: " + myDamage);
         double bestScore = 1000000;
         double score;
-        double dps;
+        //int dps;
+
         for (RobotInfo info : nearbyRobots) {
             if (info.team != team && info.location.isWithinDistanceSquared(loc, GameConstants.ATTACK_RADIUS_SQUARED)) {
-                /*dps = Micro.BASE_ATTACK + SkillType.ATTACK.getSkillEffect(info.attackLevel);
-                if (info.health > myDamage) {
-                    score = info.health - myDamage;
-                } else {
-                    score = 0;
-                }
-                score += 1.0 / dps;*/
-                score = info.health;
+                //dps = 150 + SkillType.ATTACK.getSkillEffect(info.attackLevel);
+                //score = info.attackLevel / 7.0;
+                score = StrictMath.max(info.health - myDamage, 0) + 1.0/(1+info.healLevel);
+                /*if (info.health > myDamage) {
+                    score += info.health - myDamage;
+                }*/
+
                 if (info.hasFlag) score -= 1000;
 
                 if (score < bestScore) {
                     bestScore = score;
+                    /*if (info.health > myDamage) {
+                        secondTarget = info.location;
+                    } else {
+                        secondTarget = best;
+                    }*/
                     best = info.location;
                 }
             }
@@ -549,6 +570,10 @@ public strictfp class RobotPlayer {
         MapLocation best = getEnemyTarget(rc, rc.getLocation());
         if (best != null && rc.canAttack(best)) {
             rc.attack(best);
+            /*if (secondTarget != null && rc.isActionReady()) {
+                rc.attack(secondTarget);
+                System.out.println("ATTACK 2");
+            }*/
             return true;
         }
         return false;
@@ -744,8 +769,7 @@ public strictfp class RobotPlayer {
             boolean[] elim = new boolean[pos.length];
 
             if (separation > 0) {
-                MapInfo[] infos = rc.senseNearbyMapInfos(18);
-                for (MapInfo info : infos) {
+                for (MapInfo info : nearbyMapInfos) {
                     if (info.getTrapType() == type) {
                         for (int i = pos.length; i-->0;) {
                             if (pos[i].isWithinDistanceSquared(info.getMapLocation(), separation)) elim[i] = true;
@@ -1010,7 +1034,7 @@ public strictfp class RobotPlayer {
             bestBuild = null;
         }
 
-        for (MapInfo mi : rc.senseNearbyMapInfos(-1)) {
+        for (MapInfo mi : nearbyMapInfos) {
             m = mi.getMapLocation();
             dist = m.distanceSquaredTo(nearestEnemy);
             if ((m.x + m.y) % 2 == 0 && mi.isPassable() && mi.getTrapType() == TrapType.NONE
@@ -1036,13 +1060,42 @@ public strictfp class RobotPlayer {
         }
 
     }
-
-    public static void tryNoBuilderBuild(RobotController rc) throws GameActionException {
-        MapLocation curr = rc.getLocation();
-        if (!rc.canSenseLocation(nearestEnemy) || !hasLineOfSight(rc, curr, nearestEnemy)) return;
-        if (shouldBuild() && round >= GameConstants.SETUP_ROUNDS+50 && rc.getCrumbs() > 500) {
-            tryBuild(rc, 13, TrapType.STUN);
+    
+    /**
+     * Call this at the end of the round to update traps.
+     */
+    public static void updateTraps() {
+        previousTraps.clear();
+        for (MapInfo mi : nearbyMapInfos) {
+            if (mi.getTrapType() == TrapType.STUN) {
+                previousTraps.add(mi.getMapLocation());
+            }
         }
+        stunned3 = stunned2;
+        stunned2 = stunned1;
+        stunned1 = stunned0;
+        stunned0 = "";
+    }
+
+    public static void checkDetonated(RobotController rc) {
+        MapLocation curr = rc.getLocation();
+        //detonatedTrap = null;
+        MapLocation det;
+        for (MapInfo mi : nearbyMapInfos) {
+            if (mi.getTrapType() == TrapType.NONE && previousTraps.contains(mi.getMapLocation())) {
+                rc.setIndicatorDot(mi.getMapLocation(), 0, 0, 255);
+                det = mi.getMapLocation();
+                for (RobotInfo info : nearbyRobots) {
+                    if (info.team != team && det.isWithinDistanceSquared(info.location, 5)) {
+                        stunned0 += info.ID + ",";
+                    }
+                }
+            }
+        }
+        /*if (detonatedRound - round + 1 >= TrapType.STUN.opponentCooldown / GameConstants.COOLDOWNS_PER_TURN) {
+            detonatedTrap = null;
+        }*/
+        //System.out.println("intRadSq: " + TrapType.STUN.interactRadius);
     }
 
     public static void tryStunForCrumbs(RobotController rc) throws GameActionException {
@@ -1073,15 +1126,13 @@ public strictfp class RobotPlayer {
         }
     }
 
-    public static boolean shouldBuild() {
-        return numEnemies >= 2 && numAllies >= 2 && round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS;
-    }
-
     public static void tryDigAndBuild(RobotController rc) throws GameActionException {
         MapLocation curr = rc.getLocation();
         boolean isMaxed = rc.getExperience(SkillType.BUILD) >= SkillType.BUILD.getExperience(6);
         if (isMaxed) {
-            if (shouldBuild() && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT
+            boolean shouldBuild = (numEnemies >= 2 && numAllies >= 2);
+            if (shouldBuild && rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT
+                    && round >= GameConstants.SETUP_ROUNDS - READY_ROUNDS
                     && rc.getCrumbs() > TrapType.EXPLOSIVE.buildCost + 50) {
                 if (!tryBuild(rc, 5, TrapType.STUN)) {
                     //if (!tryBuild(rc, 13, TrapType.EXPLOSIVE)) {
@@ -1095,7 +1146,7 @@ public strictfp class RobotPlayer {
         }
         if (!isMaxed) {
             if (!isThreatened) {
-                MapLocation m;
+            MapLocation m;
                 for (Direction d : directions) {
                     m = curr.add(d);
                     if (/*(m.x + m.y) % 2 == 1 &&*/ rc.canDig(m)) {

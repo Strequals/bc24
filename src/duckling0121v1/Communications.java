@@ -1,4 +1,4 @@
-package egg;
+package duckling0121v1;
 
 import battlecode.common.*;
 

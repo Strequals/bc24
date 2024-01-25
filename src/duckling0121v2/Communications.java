@@ -1,4 +1,4 @@
-package egg;
+package duckling0121v2;
 
 import battlecode.common.*;
 
@@ -18,7 +18,7 @@ public strictfp class Communications {
     
 
     public static final int SPAWN_SCORE = 10;
-    public static final int HOLDING_FLAG_SCORE = 20;
+    public static final int HOLDING_FLAG_SCORE = 60;
     public static final int STOLEN_FLAG_SCORE = 90;
     public static final int THREATENED_FLAG_BASE_SCORE = 60;
 
@@ -355,13 +355,15 @@ public strictfp class Communications {
         }
     }
 
+    static final int defender_mask = 0b1000000000000;
+
     public static MapLocation tryClaimDefender(RobotController rc, boolean isSpawned) throws GameActionException {
         for (int i = 3; i-->0;) {
             if (array[FLAGSPAWN_INDEX+i]>0) {
-                if (((array[FLAGSPAWN_INDEX+i]-1) >> 12) == 0) {
+                if (((array[FLAGSPAWN_INDEX+i]-1) & defender_mask) == 0) {
                     MapLocation m = new MapLocation(((array[FLAGSPAWN_INDEX+i]-1) >> 6) % 64, (array[FLAGSPAWN_INDEX+i]-1) % 64);
                     if (!isSpawned || m.distanceSquaredTo(rc.getLocation()) <= CLAIM_DEFENDER_RANGE) {
-                        array[FLAGSPAWN_INDEX+i] = array[FLAGSPAWN_INDEX+i] + 4096;
+                        array[FLAGSPAWN_INDEX+i] = ((array[FLAGSPAWN_INDEX+i]-1) | defender_mask) + 1;
                         rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
                         return m;
                     }
@@ -377,12 +379,63 @@ public strictfp class Communications {
                 int val = array[FLAGSPAWN_INDEX+i]-1;
                 if ((val >> 6) % 64 == defendLoc.x
                         && val % 64 == defendLoc.y) {
-                    array[FLAGSPAWN_INDEX+i] = (val % 4096) + 1;
+                    array[FLAGSPAWN_INDEX+i] = (val ^ defender_mask) + 1;
                     rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
                     return;
                 }
             }
         }
+    }
+
+    static final int builder_mask = 0b10000000000000;
+    static final int inv_builder_mask = 0b1101111111111111;
+
+    public static void markBuildDefense(RobotController rc, MapLocation defendLoc, boolean shouldBuild) throws GameActionException {
+        for (int i = 3; i-->0;) {
+            if (array[FLAGSPAWN_INDEX+i]>0) {
+                int val = array[FLAGSPAWN_INDEX+i]-1;
+                if ((val >> 6) % 64 == defendLoc.x
+                        && val % 64 == defendLoc.y) {
+                    if (shouldBuild) {
+                        array[FLAGSPAWN_INDEX+i] = (val | builder_mask) + 1;
+                    } else {
+                        array[FLAGSPAWN_INDEX+i] = (val & inv_builder_mask) + 1;
+                    }
+                    rc.writeSharedArray(FLAGSPAWN_INDEX+i, array[FLAGSPAWN_INDEX+i]);
+                    return;
+                }
+            }
+        }
+    }
+
+    public static MapLocation getBuilderNeededSpawn(RobotController rc, MapLocation curr) throws GameActionException {
+        MapLocation best = null;
+        int bestI = -1;
+        int bestDist = 1000000;
+        MapLocation m;
+        int dist;
+        for (int i = 3; i-->0;) {
+            if (array[FLAGSPAWN_INDEX+i]>0) {
+                int val = array[FLAGSPAWN_INDEX+i]-1;
+                if ((val & builder_mask) > 0) {
+                    m = getRespawnLocation(rc, i);
+                    rc.setIndicatorDot(m, 0, 0, 255);
+                    dist = m.distanceSquaredTo(curr);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = m;
+                        bestI = i;
+                    }
+                }
+            }
+        }
+
+        if (best != null) {
+            int val = array[FLAGSPAWN_INDEX+bestI]-1;
+            array[FLAGSPAWN_INDEX+bestI] = (val ^ builder_mask) + 1;
+            rc.writeSharedArray(FLAGSPAWN_INDEX+bestI, array[FLAGSPAWN_INDEX+bestI]);
+        }
+        return best;
     }
     
     /**

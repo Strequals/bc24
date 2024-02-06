@@ -1,4 +1,4 @@
-package duckling;
+package duck0125v2;
 
 import battlecode.common.*;
 
@@ -151,11 +151,12 @@ public strictfp class Micro {
                 if (inRange > other.inRange) return true;
                 if (inRange < other.inRange) return false;
             }*/
+
             if (enemiesTargeting == 0) {
-                if (inRange > other.inRange) return true;
-                if (inRange < other.inRange) return false;
-                if (!diagonal && other.diagonal) return true;
-                if (diagonal && !other.diagonal) return false;
+                if (canAttack) {
+                    if (inRange > other.inRange) return true;
+                    if (inRange < other.inRange) return false;
+                }
             }
             
             if (!hurt && inRange == 0) {
@@ -165,7 +166,7 @@ public strictfp class Micro {
                     if (minDistToEnemy < other.minDistToEnemy) return true;
                     if (minDistToEnemy > other.minDistToEnemy) return false;
                 }
-            } else if (enemiesTargeting > 0) {
+            } else {
                 if (minDistToEnemy > other.minDistToEnemy) return true;
                 if (minDistToEnemy < other.minDistToEnemy) return false;
             }

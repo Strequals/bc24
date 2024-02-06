@@ -1,4 +1,4 @@
-package duckling;
+package duck0127v2;
 
 import battlecode.common.*;
 
@@ -27,6 +27,7 @@ public strictfp class Micro {
     static boolean healer;
     static boolean stunned;
     static boolean isSetup;
+    static int myDamage;
     static boolean defendingCarrier;
     //static int adjacentAllies = 0;
 
@@ -63,6 +64,8 @@ public strictfp class Micro {
         boolean isDefense = false;
         boolean isSpace = false;
         boolean diagonal = false;
+        boolean isJailable = false;
+        int jailableAttackers = 0;
 
         public MicroInfo(Direction d) throws GameActionException {
             this.d = d;
@@ -86,6 +89,12 @@ public strictfp class Micro {
                 if (!stunned) {
                     enemiesAttacking++;
                     enemiesTargeting++;
+                    if (robot.health <= myDamage) {
+                        isJailable = true;
+                        jailableAttackers = 1;
+                    }
+                } else {
+                    if (robot.health <= myDamage) isJailable = true;
                 }
             } else if (robot.location.add(robot.location.directionTo(l)).isWithinDistanceSquared(l, attackRadius) && !stunned) {
                 enemiesTargeting++;
@@ -133,9 +142,14 @@ public strictfp class Micro {
                 if (isSpace && !other.isSpace) return true;
                 if (!isSpace && other.isSpace) return false;
             }
-
-            if (enemiesAttacking < other.enemiesAttacking) return true;
-            if (enemiesAttacking > other.enemiesAttacking) return false;
+            
+            if (canAttack) {
+                if (enemiesAttacking - jailableAttackers < other.enemiesAttacking - other.jailableAttackers) return true;
+                if (enemiesAttacking - jailableAttackers > other.enemiesAttacking - other.jailableAttackers) return false;
+            } else {
+                if (enemiesAttacking < other.enemiesAttacking) return true;
+                if (enemiesAttacking > other.enemiesAttacking) return false;
+            }
 
             /*if (!hurt && canAttack && numAllies >= 4 && inRange == 0) {
                 if (!diagonal && other.diagonal) return true;
@@ -143,35 +157,45 @@ public strictfp class Micro {
                 if (minDistToEnemy < other.minDistToEnemy) return true;
                 if (minDistToEnemy > other.minDistToEnemy) return false;
             }*/
-
-            if (enemiesTargeting < other.enemiesTargeting) return true;
-            if (enemiesTargeting > other.enemiesTargeting) return false;
+            /*if (canAttack) {
+                if (isJailable && !other.isJailable) return true;
+                if (!isJailable && other.isJailable) return false;
+            }*/
+            
+            if (canAttack) {
+                if (enemiesTargeting - jailableAttackers < other.enemiesTargeting - other.jailableAttackers) return true;
+                if (enemiesTargeting - jailableAttackers > other.enemiesTargeting - other.jailableAttackers) return false;
+            } else {
+                if (enemiesTargeting < other.enemiesTargeting) return true;
+                if (enemiesTargeting > other.enemiesTargeting) return false;
+            }
 
             /*if (canAttack && hurt && enemiesAttacking == 0 && enemiesTargeting == 0) {
                 if (inRange > other.inRange) return true;
                 if (inRange < other.inRange) return false;
             }*/
-            if (enemiesTargeting == 0) {
-                if (inRange > other.inRange) return true;
-                if (inRange < other.inRange) return false;
-                if (!diagonal && other.diagonal) return true;
-                if (diagonal && !other.diagonal) return false;
+
+            if (canAttack) {
+                if (enemiesTargeting - jailableAttackers == 0) {
+                    if (inRange > other.inRange) return true;
+                    if (inRange < other.inRange) return false;
+                }
             }
             
-            if (!hurt && inRange == 0) {
-                if (canAttackNext) {
+            if (!hurt && canAttackNext) {
+                if (inRange == 0 && other.inRange == 0) {
                     if (!diagonal && other.diagonal) return true;
                     if (diagonal && !other.diagonal) return false;
                     if (minDistToEnemy < other.minDistToEnemy) return true;
                     if (minDistToEnemy > other.minDistToEnemy) return false;
                 }
-            } else if (enemiesTargeting > 0) {
+            } else {
                 if (minDistToEnemy > other.minDistToEnemy) return true;
                 if (minDistToEnemy < other.minDistToEnemy) return false;
             }
 
-            if (alliesTargeting > other.alliesTargeting) return true;
-            if (alliesTargeting < other.alliesTargeting) return false;
+            if (alliesTargeting > 0 && other.alliesTargeting == 0) return true;
+            if (alliesTargeting == 0 &&  other.alliesTargeting > 0) return false;
 
             if (!diagonal && other.diagonal) return true;
             if (diagonal && !other.diagonal) return false;
@@ -203,6 +227,7 @@ public strictfp class Micro {
         numAllies = 0;
         numEnemies = 0;
         defendingCarrier = defCarrier;
+        myDamage = rc.getAttackDamage();
         //adjacentAllies = 0;
 
         mi[0] = new MicroInfo(Direction.NORTH);
